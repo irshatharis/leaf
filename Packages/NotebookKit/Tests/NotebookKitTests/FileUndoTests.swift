@@ -100,18 +100,15 @@ final class FileUndoTests: XCTestCase {
         let writes = FileOperations.mainThreadWrites.withLock { $0 }
         workspace.open(draft)
         workspace.open(other)
-        workspace.toggleFavorite(other)
         let trashing = workspace.trash(other)
         XCTAssertEqual(manager.undoMenuItemTitle, "Undo Move to Trash")
         _ = await trashing.value
         XCTAssertFalse(exists(other))
-        XCTAssertFalse(workspace.isFavorite(other))
         XCTAssertEqual(workspace.currentURL?.path, draft.path)
 
         try await undo(workspace, manager)
         XCTAssertEqual(text(other), "# Other\n\nSee [[Draft]].\n")
         XCTAssertEqual(workspace.currentURL?.path, other.path, "it was open")
-        XCTAssertTrue(workspace.isFavorite(other), "it was a favourite")
         XCTAssertNotNil(workspace.node(for: other, reading: false), "not in the sidebar")
         XCTAssertEqual(manager.redoMenuItemTitle, "Redo Move to Trash")
 

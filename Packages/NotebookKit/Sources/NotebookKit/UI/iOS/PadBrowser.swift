@@ -1,8 +1,8 @@
 #if os(iOS)
 import SwiftUI
 
-/// The iPad, as the Mac: a sidebar with the iPhone's first screen in it, To-dos and Favorites as tiles, what you opened
-/// last and a tree of every location, the open file next to it, and the note's outline in an inspector on the right.
+/// The iPad, as the Mac: a sidebar with To-dos and a tree of every location, the open file next to it, and the note's
+/// outline in an inspector on the right.
 struct PadBrowser: View {
     @Bindable var workspace: Workspace
     @State private var newFolderIn: URL?
@@ -27,7 +27,7 @@ struct PadBrowser: View {
         let wide = width.map { $0 >= Self.wide } ?? true
         _isWide = State(initialValue: wide)
         _hasMeasured = State(initialValue: width != nil)
-        _startsWithoutSidebar = State(initialValue: !wide && (workspace.currentURL != nil || workspace.showsTodos || workspace.showsFavorites))
+        _startsWithoutSidebar = State(initialValue: !wide && (workspace.currentURL != nil || workspace.showsTodos))
     }
 
     /// From this wide on there is room for the sidebar, a column of text and the outline: an iPad in landscape. In
@@ -96,8 +96,6 @@ struct PadBrowser: View {
                 isSearchFocused = false
             case "settings": showsSettings = argument != "hide"
             case "newfolder": newFolderIn = workspace.locations.first?.url
-            case "favorite": if let root = workspace.locations.first?.url { workspace.toggleFavorite(root.appendingPathComponent(argument)) }
-            case "favorites": workspace.showFavorites()
             default: break
             }
         }
@@ -109,7 +107,7 @@ struct PadBrowser: View {
         .onChange(of: workspace.currentURL) { _, url in
             if url != nil { withAnimation { makeWayForPage() } }
         }
-        .onChange(of: workspace.showsTodos || workspace.showsFavorites) { _, shows in
+        .onChange(of: workspace.showsTodos) { _, shows in
             if shows { withAnimation { makeWayForPage() } }
         }
         .onChange(of: workspace.columnVisibility) { _, visibility in
@@ -129,7 +127,7 @@ struct PadBrowser: View {
     /// it comes back if it went for want of room.
     private func fitSidebar() {
         if !isWide {
-            if workspace.currentURL != nil || workspace.showsTodos || workspace.showsFavorites { makeWayForPage() }
+            if workspace.currentURL != nil || workspace.showsTodos { makeWayForPage() }
         } else if workspace.sidebarHiddenForWidth {
             workspace.columnVisibility = .all
             workspace.sidebarHiddenForWidth = false
@@ -189,8 +187,6 @@ struct PadBrowser: View {
                 Group {
                     if workspace.showsTodos {
                         TodosView(workspace: workspace, isInSplitView: true)
-                    } else if workspace.showsFavorites {
-                        FavoritesScreen(workspace: workspace, newFolderIn: $newFolderIn, isInSplitView: true)
                     } else if let url = workspace.currentURL {
                         DocumentScreen(workspace: workspace, url: url, isInSplitView: true)
                     } else {
@@ -213,9 +209,8 @@ struct PadBrowser: View {
 
 }
 
-/// The sidebar: search results while you search; otherwise the iPhone's first screen, To-dos and Favorites as tiles,
-/// what you opened last as cards, a section for every location, with its folders opening in place, as in the Mac's
-/// sidebar, and the files kept on their own under Files.
+/// The sidebar: search results while you search; otherwise To-dos, a section for every location, with its folders
+/// opening in place, as in the Mac's sidebar, and the files kept on their own under Files.
 struct PadSidebar: View {
     @Bindable var workspace: Workspace
     let query: String
@@ -233,18 +228,8 @@ struct PadSidebar: View {
                 if isSearching {
                     SearchResultsList(workspace: workspace, query: query) { workspace.open($0) }
                 } else {
-                    HomeTileGrid(workspace: workspace)
-                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-                        .listRowBackground(Color.clear)
+                    HomeTodos(workspace: workspace) { workspace.showTodos() }
                         .selectionDisabled()
-                    if !workspace.recentCardURLs.isEmpty {
-                        Section("Recent", isExpanded: sectionBinding("Recent")) {
-                            RecentCardRow(workspace: workspace, newFolder: { newFolderIn = $0 })
-                                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-                                .listRowBackground(Color.clear)
-                                .selectionDisabled()
-                        }
-                    }
                     ForEach(workspace.locations) { location in
                         Section(isExpanded: sectionBinding(location.id.uuidString)) {
                             FolderTree(workspace: workspace, folder: location.url, expanded: $expanded, newFolderIn: $newFolderIn)
@@ -323,7 +308,7 @@ struct PadSidebar: View {
         guard let found = workspace.folders(to: url) else { return }
         collapsedSections.remove(found.location.id.uuidString)
         for folder in found.folders.dropFirst() { expanded.insert(folder.path) }
-        // A folder opened from a link or a favourite opens too.
+        // A folder opened from a link opens too.
         let target = url.standardizedFileURL
         if target != found.location.url, workspace.node(for: target, reading: false)?.isFolder ?? false { expanded.insert(target.path) }
     }

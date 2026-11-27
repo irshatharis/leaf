@@ -85,11 +85,10 @@ public enum NoteExporter {
     }
 
     /// The top of the note on a page `size` points big, `scale` pixels to the point: its PDF's first page, cut off where
-    /// the page ends, on white. For thumbnails (NoteThumbnail). `dark`, for the app's own cards in Dark Mode: on the
-    /// note's dark background, in the colours the note has there.
-    static func top(of editor: EditorController, title: String, size: CGSize, scale: CGFloat, dark: Bool = false) async -> (image: CGImage, copy: Copy)? {
+    /// the page ends, on white. For thumbnails (NoteThumbnail).
+    static func top(of editor: EditorController, title: String, size: CGSize, scale: CGFloat) async -> (image: CGImage, copy: Copy)? {
         let width = paper.width - margin * 2
-        let style: UIUserInterfaceStyle = dark ? .dark : .light
+        let style: UIUserInterfaceStyle = .light
         let copy = await layOut(editor, width: width, style: style)
         let page = CGSize(width: paper.width, height: (paper.width * size.height / size.width).rounded())
         let format = UIGraphicsImageRendererFormat()

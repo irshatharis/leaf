@@ -326,7 +326,7 @@ struct TouchSettings: View {
                 } header: {
                     Text("Notes")
                 } footer: {
-                    Text("New notes go into the folder you’re in; made anywhere else, they go to the default folder. A note you leave with no text in it, or only spaces, is deleted, unless it has a reminder or is a favourite, and so is a new handwritten note you leave without writing in it. Leaf asks before deleting a note with something in it; empty notes go right away.")
+                    Text("New notes go into the folder you’re in; made anywhere else, they go to the default folder. A note you leave with no text in it, or only spaces, is deleted, unless it has a reminder, and so is a new handwritten note you leave without writing in it. Leaf asks before deleting a note with something in it; empty notes go right away.")
                 }
                 TodosSetting()
                 Section {

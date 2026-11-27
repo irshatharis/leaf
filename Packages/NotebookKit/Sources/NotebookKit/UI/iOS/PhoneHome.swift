@@ -1,75 +1,25 @@
 #if os(iOS)
 import SwiftUI
 
-/// To-dos and Favorites at the top of the iPhone's first screen, as Reminders shows its lists that gather things from
-/// all the others: side by side, each with its count, each opening its own screen. Favorites is there before anything
-/// is starred too, and its screen says how to star something.
-struct HomeTiles: View {
+/// To-dos at the top of the iPhone's first screen and the iPad's sidebar, with how many are due.
+struct HomeTodos: View {
     let workspace: Workspace
-    /// How wide the tiles are together: the list sets them in from the screen's edges by what is left on either side,
-    /// for Recent's cards to line up with (`HomeScreen.tilesInset`).
-    @Binding var width: CGFloat
-    /// Pushes the tile's screen.
-    let open: (Page) -> Void
+    /// Shows To-dos: its own screen on the iPhone, next to the sidebar on the iPad.
+    let open: () -> Void
 
     var body: some View {
-        let showsTodos = NotebookSettings.shared.showsTodos
-        Section {
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                if showsTodos {
-                    tile(.todos()) { HomeTileLabel(title: "To-dos", symbol: "checklist", color: .accentColor, count: workspace.dueTodoCount) }
-                }
-                tile(.favorites()) {
-                    HomeTileLabel(title: "Favorites", symbol: "star.fill", color: HomeStyle.favoritesColor, count: workspace.favoriteURLs.count)
-                }
-            }
-            // Their width, not where they are: going back to this screen by a swipe, the screen slides in from the side, and
-            // where the tiles are in it changed with every frame, and the cards' size with it.
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-        }
-    }
-
-    /// A button rather than a link: both tiles are in one row of the list, and a tap anywhere on a row with links in it
-    /// follows the row's last link, so To-dos opened Favorites.
-    private func tile(_ page: @autoclosure @escaping () -> Page, label: () -> HomeTileLabel) -> some View {
-        Button { open(page()) } label: { label() }
-            // Each its own button, not the row's.
-            .buttonStyle(.plain)
-            .accessibilityAddTraits(.isLink)
-    }
-}
-
-/// What you opened last, as cards in a row that scrolls sideways (`RecentCardRow`), each opening its file's screen.
-/// Each is as wide as a tile, so two sit under To-dos and Favorites. The row runs from one edge of the screen to the
-/// other, its section without the list's margins, so the next card peeks in at the edge and the row plainly scrolls;
-/// it stops at a card each time, in line with the tiles.
-struct RecentCards: View {
-    let workspace: Workspace
-    @Binding var newFolderIn: URL?
-    /// The tiles' inset from the screen's edges (`HomeScreen.tilesInset`).
-    let inset: CGFloat
-
-    var body: some View {
-        // With the note you are in: going back to this screen doesn't put its card in at the start and push the others
-        // along, unless you come back within a moment of opening it (`Workspace.recentCardURLs`).
-        if !workspace.recentCardURLs.isEmpty {
-            let workspace = workspace
+        if NotebookSettings.shared.showsTodos {
             Section {
-                // Hosted apart from the list, a card can't be a link to its file's screen (`HostedWithMenu`): it opens
-                // the file, whose screen comes over this one, where you were in it, as the link's did.
-                RecentCardRow(workspace: workspace, margin: inset, newFolder: { newFolderIn = $0 }, open: { workspace.reopen($0) })
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-            } header: {
-                // Where the other sections' titles are, which the list sets in by the margins this one goes without.
-                Text("Recent").padding(.leading, inset)
+                Button(action: open) {
+                    LabeledContent {
+                        Text(workspace.dueTodoCount, format: .number)
+                    } label: {
+                        Label("To-dos", systemImage: "checklist")
+                    }
+                }
+                .tint(.primary)
+                .accessibilityAddTraits(.isLink)
             }
-            .listSectionMargins(.horizontal, 0)
-            // Going edge to edge, the section would get the hairlines a list draws above and below such a section.
-            .listSectionSeparator(.hidden)
-            .listRowSeparator(.hidden)
         }
     }
 }
@@ -188,60 +138,6 @@ struct KeptFileRows: View {
                             }
                             .tint(.red)
                         }
-                }
-            }
-        }
-    }
-}
-
-/// Your favourites: on the iPhone a screen of their own, from their tile on the first screen; on the iPad next to the
-/// sidebar, in place of a note. Notes and folders you starred, in the order you starred them.
-struct FavoritesScreen: View {
-    @Bindable var workspace: Workspace
-    @Binding var newFolderIn: URL?
-    /// On the iPad, next to the sidebar: a tap opens a note in place of the list, and a folder in the sidebar.
-    var isInSplitView = false
-
-    var body: some View {
-        let favorites = workspace.favoriteURLs
-        List {
-            ForEach(favorites, id: \.self) { url in
-                let row = workspace.row(for: url, showsDetail: true, favorite: true)
-                Group {
-                    if isInSplitView {
-                        Button { workspace.open(url) } label: { row }
-                            .tint(.primary)
-                    } else {
-                        NavigationLink(value: Page(url: url, isFolder: row.kind == .folder)) { row }
-                    }
-                }
-                .appContextMenu { FileActions.entries(workspace, url) { newFolderIn = $0 } }
-                .swipeActions(edge: .trailing) {
-                    Button { withAnimation { workspace.toggleFavorite(url) } } label: {
-                        Label("Unfavorite", systemImage: "star.slash")
-                    }
-                    .tint(.orange)
-                }
-            }
-        }
-        .overlay {
-            if favorites.isEmpty {
-                ContentUnavailableView {
-                    Label("No Favorites", systemImage: "star")
-                } description: {
-                    Text("Touch and hold a note or folder and choose Add to Favorites.")
-                }
-            }
-        }
-        .animation(.default, value: favorites)
-        .navigationTitle("Favorites")
-        .toolbar {
-            if isInSplitView {
-                ToolbarItem(placement: .primaryAction) { NewNoteButton(workspace: workspace) }
-            } else {
-                ToolbarSpacer(.flexible, placement: .bottomBar)
-                ToolbarItem(placement: .bottomBar) {
-                    NewNoteButton(workspace: workspace, folder: workspace.defaultFolder)
                 }
             }
         }

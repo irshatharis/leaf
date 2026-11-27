@@ -35,7 +35,7 @@ struct HeaderMenuButton: UIViewRepresentable {
     func updateUIView(_ button: UIButton, context: Context) {
         button.accessibilityLabel = label
         let entries = entries
-        // Made when it opens, so it says what is true then, such as whether the folder is a favourite.
+        // Made when it opens, so it says what is true then, such as whether the folder is hidden.
         button.menu = UIMenu(children: [UIDeferredMenuElement.uncached { [weak button] done in
             done(MainActor.assumeIsolated { SystemMenuElements.elements(of: entries(), from: button) })
         }])

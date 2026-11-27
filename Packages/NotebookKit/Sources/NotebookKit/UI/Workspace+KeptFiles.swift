@@ -1,7 +1,7 @@
 import Foundation
 
 /// Files kept on their own, outside every location: chosen with Open File on iPhone and iPad, or handed over by another
-/// app. They show under Files below the folders, in Recent, in Favorites and in search, links find them, and they open
+/// app. They show under Files below the folders, in Recent and in search, links find them, and they open
 /// again in later runs from the bookmark each keeps. What needs the file's folder (Rename, Move To, Duplicate, Delete, a
 /// new note next to it) isn't offered for them: Notebook has the file, not its folder.
 extension Workspace {
@@ -76,7 +76,7 @@ extension Workspace {
     }
 
     /// Finds the kept files again by their bookmarks, off the main thread, with access to each started: where one
-    /// moved, Recent, Favorites and the rest follow it. `last`, the file open when Notebook last quit, opens then,
+    /// moved, Recent and the rest follow it. `last`, the file open when Notebook last quit, opens then,
     /// unless you opened another meanwhile.
     func resolveKeptFiles(thenOpen last: URL?) {
         let files = keptFiles

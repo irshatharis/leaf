@@ -469,8 +469,6 @@ enum DebugRemote {
             workspace.isOutlineVisible.toggle()
         case "sidebar":
             workspace.columnVisibility = argument == "hide" ? .detailOnly : .all
-        case "favorite":
-            if let url = url(argument) ?? workspace.currentURL { workspace.toggleFavorite(url) }
         case "rename":
             // rename <name>: the open file; rename <file> > <name>: any file or folder.
             let parts = argument.components(separatedBy: " > ")

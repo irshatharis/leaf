@@ -77,11 +77,10 @@ public enum NoteExporter {
     }
 
     /// The top of the note on a page `size` points big, `scale` pixels to the point: as a picture of it is laid out
-    /// (`data(for:title:as: .png)`), but on white and cut off where the page ends. For thumbnails (NoteThumbnail). `dark`,
-    /// for the app's own cards in Dark Mode: on the note's dark background, in the colours the note has there.
-    static func top(of editor: EditorController, title: String, size: CGSize, scale: CGFloat, dark: Bool = false) async -> (image: CGImage, copy: Copy)? {
+    /// (`data(for:title:as: .png)`), but on white and cut off where the page ends. For thumbnails (NoteThumbnail).
+    static func top(of editor: EditorController, title: String, size: CGSize, scale: CGFloat) async -> (image: CGImage, copy: Copy)? {
         let width = EditorStyle.contentWidth + 96
-        let appearance = NSAppearance(named: dark ? .darkAqua : .aqua)!
+        let appearance = NSAppearance(named: .aqua)!
         let copy = await layOut(editor, title: title, width: width, margin: 48, appearance: appearance)
         let page = NSRect(x: 0, y: 0, width: width, height: (width * size.height / size.width).rounded())
         let view = copy.view

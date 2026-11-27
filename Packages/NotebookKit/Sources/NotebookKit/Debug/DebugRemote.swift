@@ -112,12 +112,6 @@ enum DebugRemote {
             guard let workspace, let location = workspace.locations.first else { return }
             let url = argument.hasPrefix("/") ? URL(fileURLWithPath: argument) : location.url.appendingPathComponent(argument)
             workspace.open(url)
-        case "favorite":
-            // favorite <path>: stars a file or folder of the first location, or takes its star away.
-            guard let workspace, let location = workspace.locations.first else { return }
-            workspace.toggleFavorite(location.url.appendingPathComponent(argument))
-        case "favorites":
-            workspace?.showFavorites()
         case "timeopen":
             // timeopen <path>: opens a note and logs how long the main thread was busy with it, until the window had
             // drawn it and the main thread was free again.
@@ -258,7 +252,7 @@ enum DebugRemote {
                 break
             }
         case "sidebartop", "sidebarend":
-            // sidebartop: the sidebar scrolled back to Search at its top, with the tiles under it, as opening a file
+            // sidebartop: the sidebar scrolled back to Search at its top, as opening a file
             // further down leaves it scrolled. sidebarend: scrolled to its end, where Open Folder is.
             guard let outline = workspace?.sidebar?.outline, outline.numberOfRows > 0 else { break }
             outline.scrollRowToVisible(command == "sidebartop" ? 0 : outline.numberOfRows - 1)

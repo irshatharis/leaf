@@ -2,7 +2,7 @@ import XCTest
 @testable import NotebookKit
 
 /// A note left with no text in it, or only spaces and empty lines, goes to the Trash, whatever its name and whether it
-/// is new or not, and its card leaves Recent at once. Undo brings it back. One with a reminder or a star stays, and so
+/// is new or not, and it leaves Recent at once. Undo brings it back. One with a reminder stays, and so
 /// does one written in on another device before it went, or any once Settings keep notes left empty.
 @MainActor
 final class EmptyNoteTests: XCTestCase {
@@ -24,7 +24,6 @@ final class EmptyNoteTests: XCTestCase {
         UserDefaults.standard.set("Notes", forKey: "NotebookLibraryName")
         UserDefaults.standard.removeObject(forKey: "expandedFolders")
         UserDefaults.standard.removeObject(forKey: "collapsedSections")
-        Workspace.recentCardsDelay = .milliseconds(300)
     }
 
     override func tearDown() async throws {
@@ -32,7 +31,6 @@ final class EmptyNoteTests: XCTestCase {
             UserDefaults.standard.removeObject(forKey: key)
         }
         NotebookSettings.shared.deletesEmptyNotes = true
-        Workspace.recentCardsDelay = .seconds(2)
         window?.close()
         try? FileManager.default.removeItem(at: library)
     }
@@ -71,8 +69,9 @@ final class EmptyNoteTests: XCTestCase {
         ((try? FileManager.default.contentsOfDirectory(atPath: papers.path)) ?? []).filter { $0.hasSuffix(".md") }.sorted()
     }
 
-    private func cards(_ workspace: Workspace) -> [String] {
-        workspace.recentCardURLs.map(\.lastPathComponent)
+    /// The files opened last as ⌘K offers them, the open one among them.
+    private func offered(_ workspace: Workspace) -> [String] {
+        workspace.recentURLs(includingOpen: true).map(\.lastPathComponent)
     }
 
     private func isRecent(_ url: URL, in workspace: Workspace) -> Bool {
@@ -147,17 +146,13 @@ final class EmptyNoteTests: XCTestCase {
         XCTAssertEqual(notes(), ["Draft.md", "Ideas.md", "Trip.md"])
     }
 
-    func testANoteWithAReminderOrAStarStays() async throws {
+    func testANoteWithAReminderStays() async throws {
         let (workspace, _) = try await makeWorkspace()
-        let starred = papers.appendingPathComponent("Starred.md")
-        try "".write(to: starred, atomically: true, encoding: .utf8)
         workspace.setReminder(for: ideas, at: .now + 3600)
-        workspace.toggleFavorite(starred)
         workspace.open(ideas)
-        workspace.open(starred)
         workspace.open(draft)
         await settle(workspace)
-        XCTAssertEqual(notes(), ["Draft.md", "Ideas.md", "Starred.md", "Trip.md"])
+        XCTAssertEqual(notes(), ["Draft.md", "Ideas.md", "Trip.md"])
     }
 
     /// A note kept on its own, from another app, stays: Notebook has it, not its folder.
@@ -186,25 +181,25 @@ final class EmptyNoteTests: XCTestCase {
         XCTAssertTrue(isRecent(ideas, in: workspace))
     }
 
-    /// Written in on another device while it was on its way: it stays, and its card comes back.
+    /// Written in on another device while it was on its way: it stays, and comes back to Recent.
     func testANoteWrittenInMeanwhileStays() async throws {
         let (workspace, _) = try await makeWorkspace()
         workspace.open(ideas)
-        XCTAssertEqual(cards(workspace), ["Ideas.md"])
+        XCTAssertEqual(offered(workspace), ["Ideas.md"])
         // The change to files before it waits until the other device has written.
         let gate = Gate()
         workspace.changeFiles { _ in await gate.wait() }
         workspace.open(draft)
-        XCTAssertFalse(cards(workspace).contains("Ideas.md"), "its card stayed while it was going")
+        XCTAssertFalse(offered(workspace).contains("Ideas.md"), "offered while it was going")
         try "Written on the iPad.\n".write(to: ideas, atomically: true, encoding: .utf8)
         gate.open()
         await settle(workspace)
         XCTAssertEqual(notes(), ["Draft.md", "Ideas.md", "Trip.md"])
         XCTAssertEqual(try String(contentsOf: ideas, encoding: .utf8), "Written on the iPad.\n")
-        try await until("its card came back") { cards(workspace).contains("Ideas.md") }
+        try await until("it came back to Recent") { offered(workspace).contains("Ideas.md") }
     }
 
-    /// Opened again before it went, as its card can be on the iPhone for a moment after Back: it stays, open.
+    /// Opened again before it went: it stays, open.
     func testANoteOpenedAgainBeforeItWentStays() async throws {
         let (workspace, _) = try await makeWorkspace()
         let gate = Gate()
@@ -220,48 +215,16 @@ final class EmptyNoteTests: XCTestCase {
 
     // MARK: - Recent
 
-    /// Its card goes as it is left, not once the disk is done, and doesn't come back with the next file's.
-    func testItsCardLeavesRecentAtOnce() async throws {
+    /// It leaves Recent as it is left, not once the disk is done, and doesn't come back.
+    func testItLeavesRecentAtOnce() async throws {
         let (workspace, _) = try await makeWorkspace()
         workspace.open(trip)
         workspace.open(ideas)
-        try await until("the cards took the new order") { cards(workspace) == ["Ideas.md", "Trip.md"] }
+        XCTAssertEqual(offered(workspace), ["Ideas.md", "Trip.md"])
         workspace.open(draft)
-        XCTAssertEqual(cards(workspace), ["Trip.md"])
+        XCTAssertEqual(offered(workspace), ["Draft.md", "Trip.md"])
         await settle(workspace)
-        XCTAssertFalse(cards(workspace).contains("Ideas.md"), "back once it was gone")
-        try await until("the next file joined the cards") { cards(workspace) == ["Draft.md", "Trip.md"] }
-    }
-
-    /// The only card going takes Recent with it: the next file's card comes at once, as the first card does.
-    func testTheOnlyCardGoing() async throws {
-        let (workspace, _) = try await makeWorkspace()
-        workspace.open(ideas)
-        workspace.open(draft)
-        XCTAssertEqual(cards(workspace), ["Draft.md"])
-        await settle(workspace)
-        XCTAssertEqual(cards(workspace), ["Draft.md"])
-    }
-
-    /// While the pointer is on the cards, the card you clicked stays under it: the one that went is faded in its place
-    /// until the pointer leaves, and the others close up a moment after.
-    func testWhileThePointerIsOnTheCardsTheGoneCardFadesInPlace() async throws {
-        let (workspace, _) = try await makeWorkspace()
-        workspace.open(trip)
-        workspace.open(ideas)
-        try await until("the cards took the new order") { cards(workspace) == ["Ideas.md", "Trip.md"] }
-        workspace.holdRecentCards(true)
-        workspace.open(trip)
-        await settle(workspace)
-        XCTAssertEqual(notes(), ["Draft.md", "Trip.md"])
-        XCTAssertEqual(cards(workspace), ["Ideas.md", "Trip.md"], "the card clicked moved under the pointer")
-        XCTAssertTrue(workspace.isFadedCard(ideas))
-        XCTAssertFalse(workspace.isFadedCard(trip))
-        try await Task.sleep(for: .milliseconds(600))
-        XCTAssertEqual(cards(workspace), ["Ideas.md", "Trip.md"], "not while the pointer is there")
-        workspace.holdRecentCards(false)
-        try await until("the cards closed up") { cards(workspace) == ["Trip.md"] }
-        XCTAssertFalse(workspace.isFadedCard(ideas))
+        XCTAssertEqual(offered(workspace), ["Draft.md", "Trip.md"], "not back once it was gone")
     }
 }
 

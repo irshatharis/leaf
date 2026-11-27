@@ -240,8 +240,6 @@ struct DocumentScreen: View {
                 }
                 MenuEntry("Version History", "clock.arrow.circlepath", enabled: isLoaded) { workspace.browseVersions() }
                 MenuEntry.divider
-                let favorite = workspace.isFavorite(url)
-                MenuEntry(favorite ? "Remove from Favorites" : "Add to Favorites", favorite ? "star.slash" : "star") { workspace.toggleFavorite(url) }
                 // Kept on its own, without its folder: as in its row's menu (`FileActions`).
                 let isKept = workspace.isKept(url)
                 if !isKept {

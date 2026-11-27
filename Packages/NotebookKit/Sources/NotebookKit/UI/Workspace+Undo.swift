@@ -54,7 +54,6 @@ final class FileChange {
         var path: String
         /// The file that was open: it, or a note in the folder.
         var openFile: URL?
-        var isFavorite: Bool
         var reminders: [Reminder]
         var hiddenFolders: [String]
         /// What its versions are under in the History's own Trash (`NoteHistory.trash`).
@@ -384,7 +383,6 @@ extension Workspace {
             key: key,
             path: url.path,
             openFile: currentURL.flatMap { FileNode.isSameOrInside($0, url) ? $0 : nil },
-            isFavorite: isFavorite(url),
             reminders: reminders.all.filter { isIn($0.note) },
             hiddenFolders: hidden.keys.filter(isIn),
             history: NoteHistory.trashedName()
@@ -398,7 +396,6 @@ extension Workspace {
     private func restore(_ remembered: FileChange.Remembered, at url: URL) {
         let key = hiddenKey(for: url)
         func here(_ old: String) -> String { key + old.dropFirst(remembered.key.count) }
-        if remembered.isFavorite, !isFavorite(url) { toggleFavorite(url) }
         if !remembered.hiddenFolders.isEmpty {
             for folder in remembered.hiddenFolders { hidden.set(here(folder), hidden: true) }
             hiddenFoldersChanged()

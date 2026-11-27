@@ -19,9 +19,6 @@ public final class Workspace: NSObject {
     public private(set) var showsTodos = false
     /// To-dos lists only what is in this folder and the folders in it. Nil: every to-do.
     private(set) var todosFolder: URL?
-    /// Your favourites are shown on the right, in place of a file: from their tile at the top of the sidebar on iPad and
-    /// Mac. The iPhone has a screen of its own for them.
-    public private(set) var showsFavorites = false
     public private(set) var note: NoteDocument? {
         // Versions of the note left aren't restored into the next.
         didSet { if note !== oldValue { closeVersions() } }
@@ -37,21 +34,12 @@ public final class Workspace: NSObject {
     #endif
     /// Where you were in each note, to come back to.
     @ObservationIgnored private var places: [URL: EditorController.Place] = [:]
-    private(set) var favorites: [String] = []
     /// Files kept on their own, outside every location, with the bookmarks that open them again (`Workspace+KeptFiles`).
     /// Search reads them too.
     var keptFiles: [KeptFile] = [] {
         didSet { if keptFiles.map(\.path) != oldValue.map(\.path) { index.setFiles(indexedKeptFiles) } }
     }
     private(set) var recents: [String] = []
-    /// `recents` in the order Recent's cards show them: a file you open moves to the front of the cards a moment later,
-    /// and not while the pointer is on them (`holdRecentCards`), so the card you click stays where you clicked it.
-    private(set) var recentCards: [String] = []
-    /// Cards of notes that went while the pointer was on Recent's cards: they fade where they are, and the others close
-    /// up once it has left, as they take a new order then.
-    private(set) var fadedCards: Set<String> = []
-    @ObservationIgnored private var recentCardsHeld = false
-    @ObservationIgnored private var recentCardsUpdate: Task<Void, Never>?
     /// The folder chosen in Settings for new notes made outside a folder, by its path. Without one they go to the Inbox.
     private(set) var chosenDefaultFolder: String?
     /// The folders hidden from the sidebar: kept in iCloud, or only for this run with locations given on the command line.
@@ -126,8 +114,8 @@ public final class Workspace: NSObject {
     /// The outline as the window shows it: To-dos has none, so the inspector makes way for it and comes back with the
     /// next note.
     var showsOutline: Bool {
-        get { isOutlineVisible && !showsTodos && !showsFavorites }
-        set { if !showsTodos, !showsFavorites { isOutlineVisible = newValue } }
+        get { isOutlineVisible && !showsTodos }
+        set { if !showsTodos { isOutlineVisible = newValue } }
     }
     #if os(macOS)
     private static let showsOutlineAtFirst = true
@@ -366,9 +354,7 @@ public final class Workspace: NSObject {
             return
         }
         #endif
-        favorites = UserDefaults.standard.stringArray(forKey: "favorites") ?? []
         recents = UserDefaults.standard.stringArray(forKey: "recents") ?? []
-        recentCards = recents
         chosenDefaultFolder = UserDefaults.standard.string(forKey: "defaultFolder")
         if let path = UserDefaults.standard.string(forKey: "NotebookLibrary") {
             // A folder given on the command line (tests, screenshots): used for this run, not remembered.
@@ -402,9 +388,7 @@ public final class Workspace: NSObject {
             }
             #endif
             locations = [Location(id: Location.id(for: url.path), name: UserDefaults.standard.string(forKey: "NotebookLibraryName") ?? url.lastPathComponent, path: url.path, bookmark: nil)]
-            favorites = []
             recents = []
-            recentCards = []
             chosenDefaultFolder = nil
         } else {
             locations = LocationStore.load()
@@ -991,7 +975,6 @@ public final class Workspace: NSObject {
         // Another file: the PDF's drawing is saved as it goes (`PDFDrawingSession`).
         drawsOnPDF = nil
         showsTodos = false
-        showsFavorites = false
         #if os(macOS)
         pages.willOpen(target)
         #else
@@ -1048,14 +1031,10 @@ public final class Workspace: NSObject {
         recents.removeAll { $0 == target.path }
         recents.insert(target.path, at: 0)
         recents = Array(recents.prefix(8))
-        updateRecentCards()
         if !temporaryLocations {
             UserDefaults.standard.set(recents, forKey: "recents")
             UserDefaults.standard.set(target.path, forKey: "lastOpened")
         }
-        #if os(macOS)
-        sidebar?.recentsChanged()
-        #endif
         // Only the selection moves in the sidebar: nothing above it changes, so nothing jumps.
         reveal(target, select: true)
         // Not for a new note, which you start typing in at once.
@@ -1264,19 +1243,14 @@ public final class Workspace: NSObject {
     }
 
     /// What is kept by path in `former`, an earlier Documents folder of this device, follows it to the one now: the
-    /// favourites, the files opened last, the default folder and the folders open in the sidebar, and the folders hidden
+    /// files opened last, the default folder and the folders open in the sidebar, and the folders hidden
     /// and notes with reminders, which iCloud keeps for every device. Without looking at the disk.
     private func follow(movedDocuments former: String) {
         let documents = Self.documentsPath
         guard HiddenFolders.withoutPrivate(former) != HiddenFolders.withoutPrivate(documents), !Self.formerDocuments.contains(former) else { return }
         let moved = { (path: String) in Self.rerooted(path, from: [former], into: documents) }
-        if favorites.contains(where: { moved($0) != $0 }) {
-            favorites = favorites.map(moved)
-            UserDefaults.standard.set(favorites, forKey: "favorites")
-        }
         if recents.contains(where: { moved($0) != $0 }) {
             recents = recents.map(moved)
-            recentCards = recentCards.map(moved)
             UserDefaults.standard.set(recents, forKey: "recents")
         }
         if let folder = chosenDefaultFolder, moved(folder) != folder {
@@ -1355,7 +1329,7 @@ public final class Workspace: NSObject {
         let goes = NotebookSettings.shared.deletesEmptyNotes
         #endif
         guard goes, note.isLoaded, note.conflict == nil, note.isEmpty else { return false }
-        if reminder(for: note.url) != nil || isFavorite(note.url) || isKept(note.url) { return false }
+        if reminder(for: note.url) != nil || isKept(note.url) { return false }
         return !NoteDocument.documents(atOrInside: note.url).contains { $0 !== note && !$0.isClosed }
     }
 
@@ -1376,15 +1350,11 @@ public final class Workspace: NSObject {
         // Out of Recent, the folder's count and search; on iPhone and iPad out of the lists too. At once, or back on the
         // iPhone once the screen under the note is in view: what changes while it is out of sight just is so when it
         // comes, and you wouldn't see the note go. The changes to files after it wait that moment.
-        func leaveLists(_ url: URL) {
-            takeOutOfRecent(url)
-            beginLeaving(url)
-        }
-        if !goingBack { leaveLists(url) }
+        if !goingBack { beginLeaving(url) }
         changeFiles { [self] follow in
             if goingBack {
                 try? await Task.sleep(for: Self.backTransition)
-                leaveLists(follow(url))
+                beginLeaving(follow(url))
             }
             await note.saved()
             let url = follow(url)
@@ -1403,7 +1373,6 @@ public final class Workspace: NSObject {
             endLeaving(url, animated: !gone.done)
             guard gone.done else {
                 if let change { dropFromUndo(change) }
-                putBackInRecent(url)
                 return
             }
             // Copies of what was typed and taken away again go along, and come back with it.
@@ -1534,10 +1503,6 @@ public final class Workspace: NSObject {
             showTodos(in: folder, recordHistory: false)
             return true
         }
-        if url == Self.favoritesURL {
-            showFavorites(recordHistory: false)
-            return true
-        }
         guard FileManager.default.fileExists(atPath: url.path) else { return false }
         open(url, recordHistory: false)
         return true
@@ -1564,12 +1529,6 @@ public final class Workspace: NSObject {
 
     /// Whether a place in the history is To-dos, of every to-do or of a folder.
     static func isTodos(_ url: URL) -> Bool { url == todosURL || todosFolder(of: url) != nil }
-
-    /// The favourites' place in the history.
-    static let favoritesURL = URL(string: "notebook:favorites")!
-
-    /// To-dos or Favorites: a list shown in place of a file, with a place in the history but not on disk.
-    static func isList(_ url: URL) -> Bool { isTodos(url) || url == favoritesURL }
 
     /// Shows the To-dos list with every to-do in place of the file that is open, which is saved and left as when you
     /// open another.
@@ -1601,13 +1560,6 @@ public final class Workspace: NSObject {
         if showsTodos, history.indices.contains(historyIndex), Self.isTodos(history[historyIndex]) { history[historyIndex] = Self.todosURL }
     }
 
-    /// Shows your favourites in place of the file that is open, as To-dos is shown.
-    public func showFavorites(recordHistory: Bool = true) {
-        guard !showsFavorites else { return }
-        showList(Self.favoritesURL, recordHistory: recordHistory)
-        sidebarSelectList()
-    }
-
     private func showList(_ list: URL, recordHistory: Bool) {
         #if os(macOS)
         if currentURL != nil { pages.willOpen(list) }
@@ -1625,7 +1577,6 @@ public final class Workspace: NSObject {
         isTitleScrolledAway = false
         selectedFolder = nil
         showsTodos = Self.isTodos(list)
-        showsFavorites = list == Self.favoritesURL
         if recordHistory { addToHistory(list) }
         if wrote { leftWhatYouWrote() }
     }
@@ -1674,22 +1625,7 @@ public final class Workspace: NSObject {
         currentURL = nil
     }
 
-    // MARK: - Favourites and recents
-
-    func isFavorite(_ url: URL) -> Bool { favorites.contains(url.standardizedFileURL.path) }
-
-    func toggleFavorite(_ url: URL) {
-        let path = url.standardizedFileURL.path
-        if let index = favorites.firstIndex(of: path) { favorites.remove(at: index) } else { favorites.append(path) }
-        if !temporaryLocations { UserDefaults.standard.set(favorites, forKey: "favorites") }
-        #if os(macOS)
-        sidebar?.reloadSections()
-        #endif
-    }
-
-    var favoriteURLs: [URL] {
-        favorites.map { URL(fileURLWithPath: $0) }.filter(isListable)
-    }
+    // MARK: - Recents
 
     /// The files opened last, newest first, without the one that is open: for File › Open Recent and search.
     var recentURLs: [URL] { recentURLs(includingOpen: false) }
@@ -1700,21 +1636,7 @@ public final class Workspace: NSObject {
         recents.map { URL(fileURLWithPath: $0) }.filter { isListable($0) && (includingOpen || $0 != currentURL) }
     }
 
-    /// Recent's cards, the open file's among them: the iPhone's first screen shows it while you are in it, so the screen
-    /// you go back to has its card already. A file you open joins them, or moves to their front, a moment later.
-    var recentCardURLs: [URL] {
-        recentCards.compactMap { path in
-            let url = URL(fileURLWithPath: path)
-            return fadedCards.contains(path) || isListable(url) ? url : nil
-        }
-    }
-
-    /// A card that stays faded in its place until the pointer leaves Recent (`takeOutOfRecent`).
-    func isFadedCard(_ url: URL) -> Bool {
-        !fadedCards.isEmpty && fadedCards.contains(url.path)
-    }
-
-    /// A favourite or recent file that is still there to open: in one of the locations, or kept on its own, which
+    /// A recent file that is still there to open: in one of the locations, or kept on its own, which
     /// Notebook can read. One from a location you took out stays on the list, and comes back if you add the folder
     /// again, but the app can no longer read it (on the Mac the sandbox lets it see that the file is there, not what is
     /// in it).
@@ -1724,83 +1646,18 @@ public final class Workspace: NSObject {
 
     func clearRecents() {
         recents = []
-        recentCardsUpdate?.cancel()
-        recentCards = []
-        fadedCards = []
         if !temporaryLocations { UserDefaults.standard.set(recents, forKey: "recents") }
-        recentCardsChanged()
     }
 
     /// A note thrown away as it was left leaves the files opened last, which the iPhone shows without looking again.
     private func forgetRecent(_ url: URL) {
         recents.removeAll { FileNode.samePath(URL(fileURLWithPath: $0), url) }
-        takeOutOfRecent(url)
         if !temporaryLocations { UserDefaults.standard.set(recents, forKey: "recents") }
-    }
-
-    /// A note left empty leaves Recent as it goes: its card fades and the others close up. While the pointer is on the
-    /// cards it only fades, and they close up once the pointer has left, so the card you clicked stays under it.
-    private func takeOutOfRecent(_ url: URL) {
-        guard let card = recentCards.first(where: { FileNode.samePath(URL(fileURLWithPath: $0), url) }) else { return }
-        if recentCardsHeld {
-            withAnimation(.easeOut(duration: 0.25)) { _ = fadedCards.insert(card) }
-        } else {
-            withAnimation(HomeStyle.reordering) { recentCards.removeAll { $0 == card } }
-            recentCardsChanged()
-        }
-    }
-
-    /// The note left empty stays after all: its card comes back, as a moved card does, once the pointer isn't on them.
-    private func putBackInRecent(_ url: URL) {
-        if fadedCards.contains(where: { FileNode.samePath(URL(fileURLWithPath: $0), url) }) {
-            withAnimation(.easeOut(duration: 0.25)) { fadedCards = fadedCards.filter { !FileNode.samePath(URL(fileURLWithPath: $0), url) } }
-        }
-        scheduleRecentCards()
-    }
-
-    /// Recent's cards came or went: the Mac's sidebar has a section for them only while there are some.
-    private func recentCardsChanged() {
-        #if os(macOS)
-        sidebar?.recentsChanged()
-        #endif
     }
 
     /// How long the iPhone takes to go back from a note to the screen under it, for a note left empty to go from there
     /// in view (`throwAwayLeftEmpty`).
     static var backTransition = Duration.milliseconds(500)
-
-    /// How long a file you opened waits to move to the front of Recent's cards, after you opened it or the pointer left
-    /// them: long enough that clicking through cards doesn't shuffle them under the pointer. Shorter in tests.
-    static var recentCardsDelay = Duration.seconds(2)
-
-    /// The files opened last changed: the cards follow in a moment. The first card shows at once, as Recent comes with it.
-    private func updateRecentCards() {
-        guard !recentCardURLs.isEmpty else {
-            recentCards = recents
-            return
-        }
-        scheduleRecentCards()
-    }
-
-    private func scheduleRecentCards() {
-        recentCardsUpdate?.cancel()
-        guard recentCards != recents else { return }
-        recentCardsUpdate = Task { [weak self] in
-            try? await Task.sleep(for: Self.recentCardsDelay)
-            guard let self, !Task.isCancelled, !self.recentCardsHeld else { return }
-            self.recentCards = self.recents
-            self.fadedCards = []
-            self.recentCardsChanged()
-        }
-    }
-
-    /// The pointer is on Recent's cards (`true`) or left them: while it is there they keep their order, and they take the
-    /// new one a moment after it leaves.
-    func holdRecentCards(_ hold: Bool) {
-        guard hold != recentCardsHeld else { return }
-        recentCardsHeld = hold
-        if hold { recentCardsUpdate?.cancel() } else { scheduleRecentCards() }
-    }
 
     func replacePath(_ old: URL, with new: URL) {
         func fix(_ path: String) -> String { Self.relocated(path, from: old.path, to: new.path) }
@@ -1809,9 +1666,7 @@ public final class Workspace: NSObject {
         reminderMoved(from: old, to: new)
         defaultFolderMoved(from: old, to: new)
         keptFileMoved(from: old, to: new)
-        favorites = favorites.map(fix)
         recents = recents.map(fix)
-        recentCards = recentCards.map(fix)
         history = history.map { place in Self.todosFolder(of: place).map { Self.todosURL(in: fix($0)) } ?? fix(place) }
         if let folder = todosFolder { todosFolder = fix(folder) }
         relocation = (old.standardizedFileURL, new.standardizedFileURL, UUID())
@@ -1829,7 +1684,6 @@ public final class Workspace: NSObject {
         pageSnapshots = Dictionary(pageSnapshots.map { (fix($0.key), $0.value) }, uniquingKeysWith: { a, _ in a })
         #endif
         if !temporaryLocations {
-            UserDefaults.standard.set(favorites, forKey: "favorites")
             UserDefaults.standard.set(recents, forKey: "recents")
         }
     }
@@ -2579,8 +2433,6 @@ public final class Workspace: NSObject {
         hiddenFolderMoved(from: url, to: nil)
         reminderMoved(from: url, to: nil)
         defaultFolderMoved(from: url, to: nil)
-        favorites.removeAll { HiddenFolders.withoutPrivate($0) == HiddenFolders.withoutPrivate(url.path) }
-        if !temporaryLocations { UserDefaults.standard.set(favorites, forKey: "favorites") }
         thrownAwayPaths.insert(HiddenFolders.withoutPrivate(url.standardizedFileURL.path))
         showChanges(in: [url.deletingLastPathComponent()], removing: [url])
     }
@@ -2705,7 +2557,6 @@ public final class Workspace: NSObject {
     /// The open file's name as you read it: notes without their extension.
     var currentTitle: String {
         if showsTodos { return todosTitle }
-        if showsFavorites { return "Favorites" }
         guard let currentURL else { return "Leaf" }
         if let name = newName(for: currentURL) { return name }
         return FileKind(url: currentURL, isDirectory: false) == .note ? currentURL.deletingPathExtension().lastPathComponent : currentURL.lastPathComponent
@@ -2928,7 +2779,7 @@ extension Workspace: EditorControllerDelegate {
 
     /// To-dos scrolled its title up under the toolbar, or back.
     func todosTitleScrolled(away: Bool) {
-        if showsTodos || showsFavorites, isTitleScrolledAway != away { isTitleScrolledAway = away }
+        if showsTodos, isTitleScrolledAway != away { isTitleScrolledAway = away }
     }
 
     public func editorPositionDidChange(_ editor: EditorController) {

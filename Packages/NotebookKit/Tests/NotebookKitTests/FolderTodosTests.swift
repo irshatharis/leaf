@@ -98,16 +98,14 @@ final class FolderTodosTests: XCTestCase {
             let folder = library.appendingPathComponent(name, isDirectory: true)
             let list = Workspace.todosURL(in: folder)
             XCTAssertTrue(Workspace.isTodos(list), name)
-            XCTAssertTrue(Workspace.isList(list), name)
             XCTAssertEqual(Workspace.todosFolder(of: list)?.path, folder.path, name)
         }
         XCTAssertEqual(Workspace.todosURL(in: nil), Workspace.todosURL)
         XCTAssertNil(Workspace.todosFolder(of: Workspace.todosURL))
         XCTAssertNil(Workspace.todosFolder(of: groceries))
-        XCTAssertFalse(Workspace.isTodos(Workspace.favoritesURL))
     }
 
-    func testTheTileShowsEveryTodoAndTheCrossTakesNoStep() async throws {
+    func testToDosShowsEveryTodoAgainAndTheCrossTakesNoStep() async throws {
         let workspace = try await makeWorkspace()
         workspace.open(groceries)
         workspace.showTodos(in: year)
@@ -120,7 +118,7 @@ final class FolderTodosTests: XCTestCase {
         XCTAssertEqual(workspace.history.last, Workspace.todosURL)
         workspace.goBack()
         XCTAssertEqual(workspace.currentURL, groceries)
-        // The tile, ⇧⌘R, ⌘K: every to-do, also from a folder's list.
+        // ⇧⌘R, ⌘K: every to-do, also from a folder's list.
         workspace.showTodos(in: year)
         workspace.showTodos()
         XCTAssertTrue(workspace.showsTodos)

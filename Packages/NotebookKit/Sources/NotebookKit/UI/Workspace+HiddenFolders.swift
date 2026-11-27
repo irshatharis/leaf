@@ -11,6 +11,27 @@ extension Workspace {
         return children.filter { !($0.isFolder && isHidden($0.url)) }
     }
 
+    /// The folders in a folder as its list shows them, or nil until it has been read. Asks for no reading: the rows of
+    /// folders read theirs ahead as they come on screen.
+    func shownSubfolders(of folder: URL) -> [FileNode]? {
+        shownChildrenIfRead(of: folder)?.filter(\.isFolder)
+    }
+
+    /// How many files and folders a folder's list shows, or nil until it has been read.
+    func shownCount(of folder: URL) -> Int? {
+        shownChildrenIfRead(of: folder)?.count
+    }
+
+    private func shownChildrenIfRead(of folder: URL) -> [FileNode]? {
+        // On iPhone and iPad the lists watch this to show changes; the Mac's sidebar reloads its rows itself.
+        #if os(iOS)
+        _ = treeVersion
+        #endif
+        guard let node = node(for: folder, reading: false), node.hasLoadedChildren else { return nil }
+        let children = shownChildren(of: node, in: location(containing: folder))
+        return leaving.isEmpty ? children : children.filter { !isLeaving($0.url) }
+    }
+
     func isHidden(_ url: URL) -> Bool {
         !hidden.keys.isEmpty && hidden.keys.contains(hiddenKey(for: url))
     }

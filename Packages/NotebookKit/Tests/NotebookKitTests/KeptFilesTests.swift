@@ -2,8 +2,8 @@ import XCTest
 @testable import NotebookKit
 
 /// Files kept on their own, outside every location: what Open File chooses on iPhone and iPad, and what another app
-/// hands over, for apps that give single files but no folders (Nextcloud). They show under Files, in Recent and in
-/// Favorites, and a new note made while one is open goes where new notes go, not next to it.
+/// hands over, for apps that give single files but no folders (Nextcloud). They show under Files and in Recent, and a
+/// new note made while one is open goes where new notes go, not next to it.
 @MainActor
 final class KeptFilesTests: XCTestCase {
     private var base: URL!
@@ -42,8 +42,8 @@ final class KeptFilesTests: XCTestCase {
         }
     }
 
-    /// Open File keeps a file from outside the locations and opens it: it is under Files, in Recent, and can be a
-    /// favourite. Removing it takes it off all of them and leaves the file where it is.
+    /// Open File keeps a file from outside the locations and opens it: it is under Files and in Recent. Removing
+    /// it takes it off both and leaves the file where it is.
     func testAChosenFileIsKeptAndListed() async throws {
         let workspace = try await readWorkspace()
         var opened: URL?
@@ -55,14 +55,11 @@ final class KeptFilesTests: XCTestCase {
 
         workspace.open(groceries)
         XCTAssertEqual(workspace.recentURLs, [meeting], "a kept file is in Recent like the others")
-        workspace.toggleFavorite(meeting)
-        XCTAssertEqual(workspace.favoriteURLs, [meeting])
 
         workspace.removeKeptFile(meeting)
         XCTAssertFalse(workspace.isKept(meeting))
         XCTAssertEqual(workspace.keptFileURLs, [])
         XCTAssertEqual(workspace.recentURLs, [], "Notebook may not reach it any more")
-        XCTAssertEqual(workspace.favoriteURLs, [])
         XCTAssertTrue(FileManager.default.fileExists(atPath: meeting.path), "the file itself stays")
     }
 
@@ -112,19 +109,17 @@ final class KeptFilesTests: XCTestCase {
         XCTAssertEqual(resolved.last, gone)
     }
 
-    /// Recent and Favorites follow a kept file to where its bookmark found it.
+    /// Recent follows a kept file to where its bookmark found it.
     func testRecentFollowsAKeptFileThatMoved() async throws {
         let workspace = try await readWorkspace()
         workspace.keep(meeting)
         workspace.open(meeting)
         workspace.open(groceries)
-        workspace.toggleFavorite(meeting)
         try await waitFor { workspace.keptFiles.first?.bookmark != nil }
         let moved = elsewhere.appendingPathComponent("Minutes.md")
         try FileManager.default.moveItem(at: meeting, to: moved)
         workspace.resolveKeptFiles(thenOpen: nil)
         try await waitFor { workspace.keptFileURLs == [moved] }
         XCTAssertEqual(workspace.recentURLs, [moved])
-        XCTAssertEqual(workspace.favoriteURLs, [moved])
     }
 }

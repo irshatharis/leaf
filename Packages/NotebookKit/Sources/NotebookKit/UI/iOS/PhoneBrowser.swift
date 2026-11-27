@@ -19,12 +19,6 @@ final class Page: Hashable {
     static func todos(in folder: URL? = nil) -> Page { Page(url: Workspace.todosURL(in: folder), isFolder: false) }
     var isTodos: Bool { Workspace.isTodos(url) }
 
-    /// The favourites' screen, from their tile on the first screen. A list of files, so leaving a note for it closes
-    /// the note as a folder does.
-    static func favorites() -> Page { Page(url: favoritesURL, isFolder: true) }
-    var isFavorites: Bool { url == Self.favoritesURL }
-    private static let favoritesURL = URL(string: "notebook:favorites")!
-
     nonisolated static func == (a: Page, b: Page) -> Bool { a === b }
     nonisolated func hash(into hasher: inout Hasher) { hasher.combine(ObjectIdentifier(self)) }
 }
@@ -42,8 +36,6 @@ struct PhoneBrowser: View {
                 .navigationDestination(for: Page.self) { page in
                     if page.isTodos {
                         TodosView(workspace: workspace)
-                    } else if page.isFavorites {
-                        FavoritesScreen(workspace: workspace, newFolderIn: $newFolderIn)
                     } else if page.isFolder {
                         FolderScreen(workspace: workspace, page: page, newFolderIn: $newFolderIn)
                     } else {
@@ -159,35 +151,24 @@ struct PhoneBrowser: View {
     }
 }
 
-/// The first screen: To-dos and Favorites as tiles, what you opened last as cards, what is in each location, as Notes
-/// lists its folders, and the files kept on their own.
+/// The first screen: To-dos, what is in each location, as Notes lists its folders, and the files kept on their own.
 struct HomeScreen: View {
     @Bindable var workspace: Workspace
     @Binding var newFolderIn: URL?
-    /// A screen pushed over this one, for the tiles (`HomeTiles`).
+    /// A screen pushed over this one, for To-dos (`HomeTodos`).
     let push: (Page) -> Void
     @State private var query = ""
     @State private var isSearching = false
     @State private var showsSettings = false
     @State private var addsLocation = false
-    /// The list's width and the tiles' (`HomeTiles.width`).
-    @State private var listWidth: CGFloat = 0
-    @State private var tilesWidth: CGFloat = 0
     @Bindable private var settings = NotebookSettings.shared
-
-    /// From the screen's edges to the tiles, as the list sets its sections in, the same on either side: Recent's cards
-    /// line up with them.
-    private var tilesInset: CGFloat {
-        listWidth > 0 && tilesWidth > 0 ? max(0, ((listWidth - tilesWidth) / 2).rounded()) : 16
-    }
 
     var body: some View {
         List {
             if isSearching {
                 SearchResultsList(workspace: workspace, query: query) { open($0) }
             } else {
-                HomeTiles(workspace: workspace, width: $tilesWidth, open: push)
-                RecentCards(workspace: workspace, newFolderIn: $newFolderIn, inset: tilesInset)
+                HomeTodos(workspace: workspace) { push(.todos()) }
                 ForEach(workspace.locations) { location in
                     Section {
                         let children = workspace.visibleChildren(of: location.url)
@@ -210,7 +191,6 @@ struct HomeScreen: View {
                 }
             }
         }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { listWidth = $0 }
         .navigationTitle("Leaf")
         .searchable(text: $query, isPresented: $isSearching, prompt: "Search")
         .onChange(of: query, initial: true) { _, query in workspace.searchSession.update(query) }
@@ -263,7 +243,6 @@ struct HomeScreen: View {
             case "settings": showsSettings = argument != "hide"
             case "newfolder": newFolderIn = workspace.locations.first?.url
             // A file or folder of the first location, by its path in it.
-            case "favorite": if let root = workspace.locations.first?.url { workspace.toggleFavorite(root.appendingPathComponent(argument)) }
             case "unfold":
                 guard let root = workspace.locations.first?.url else { break }
                 let path = root.appendingPathComponent(argument).standardizedFileURL.path
@@ -335,11 +314,6 @@ struct FolderScreen: View {
                         }
                     }
                     .swipeActions(edge: .leading) {
-                        let favorite = workspace.isFavorite(node.url)
-                        Button { workspace.toggleFavorite(node.url) } label: {
-                            Label(favorite ? "Unfavorite" : "Favorite", systemImage: favorite ? "star.slash" : "star")
-                        }
-                        .tint(.orange)
                         if node.isFolder, workspace.canHide(node.url) {
                             HideFolderButton(workspace: workspace, url: node.url, isShort: true)
                                 .tint(.gray)
@@ -403,9 +377,6 @@ struct FolderScreen: View {
                     if let location = workspace.location(containing: page.url), workspace.hasHiddenFolders(in: location) {
                         ShowHiddenFolders.entry(workspace, location)
                     }
-                    MenuEntry.divider
-                    let favorite = workspace.isFavorite(page.url)
-                    MenuEntry(favorite ? "Remove from Favorites" : "Add to Favorites", favorite ? "star.slash" : "star") { workspace.toggleFavorite(page.url) }
                 } label: {
                     Label("More", systemImage: "ellipsis")
                 }

@@ -127,7 +127,7 @@ public struct NotebookScene: Scene {
                     Label(workspace.isOutlineVisible ? "Hide Outline" : "Show Outline", systemImage: "sidebar.right")
                 }
                 .keyboardShortcut("i", modifiers: [.command, .control])
-                .disabled(workspace.locations.isEmpty || workspace.showsTodos || workspace.showsFavorites)
+                .disabled(workspace.locations.isEmpty || workspace.showsTodos)
                 Divider()
                 SortByPicker(folder: workspace.folderInView)
                 Toggle(isOn: $settings.foldersFirst) { Label("Keep Folders on Top", systemImage: "folder") }
@@ -363,7 +363,7 @@ struct GeneralSettings: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                 Toggle("Delete notes left empty", isOn: Bindable(NotebookSettings.shared).deletesEmptyNotes)
-                Text("A note you leave or quit with no text in it, or only spaces, goes to the Trash, unless it has a reminder or is a favourite.")
+                Text("A note you leave or quit with no text in it, or only spaces, goes to the Trash, unless it has a reminder.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                 Toggle("Ask before deleting notes", isOn: Bindable(NotebookSettings.shared).asksBeforeDeletingNotes)

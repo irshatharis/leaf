@@ -10,7 +10,7 @@ struct FileRow: View {
     let name: String
     let kind: FileKind
     var isInCloud = false
-    /// Instead of the kind's symbol: a star for a favourite folder, a cloud for iCloud Drive.
+    /// Instead of the kind's symbol: a cloud for iCloud Drive.
     var symbol: String?
     /// A folder's symbol or emoji and colour, if you chose any (Customize Folder).
     var icon: FolderIcon?
@@ -159,14 +159,13 @@ extension Workspace {
     }
 
     /// A row for any file, found again by its address.
-    func row(for url: URL, showsDetail: Bool = false, favorite: Bool = false) -> FileRow {
+    func row(for url: URL, showsDetail: Bool = false) -> FileRow {
         let isFolder = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
         let kind = FileKind(url: url, isDirectory: isFolder)
         let name = kind == .folder ? folderName(url) : SearchSection.displayName(url)
         let isLocation = locations.contains { $0.url == url.standardizedFileURL }
-        // A favourite folder shows the look you gave it, else a star.
         let icon = kind == .folder && !isLocation ? folderIcon(for: url) : nil
-        let symbol = isLocation ? (Location.isICloudDriveRoot(url) || url.path == Location.iCloudDrivePath ? "icloud" : "externaldrive") : favorite && kind == .folder && icon == nil ? "star" : nil
+        let symbol = isLocation ? (Location.isICloudDriveRoot(url) || url.path == Location.iCloudDrivePath ? "icloud" : "externaldrive") : nil
         return FileRow(workspace: self, url: url, name: name, kind: kind, symbol: symbol, icon: icon, showsDetail: showsDetail)
     }
 }
@@ -263,10 +262,6 @@ enum FileActions {
             MenuEntry("Rename", "pencil") { workspace.renaming = url }
             SharedMenus.moveTo(url, workspace: workspace)
             MenuEntry("Duplicate", "plus.square.on.square") { workspace.duplicate(url) }
-        }
-        let favorite = workspace.isFavorite(url)
-        MenuEntry(favorite ? "Remove from Favorites" : "Add to Favorites", favorite ? "star.slash" : "star") {
-            withAnimation { workspace.toggleFavorite(url) }
         }
         if isFolder, workspace.canCustomize(url) {
             MenuEntry("Customize Folder…", "paintpalette") { workspace.customizeFolder(url) }

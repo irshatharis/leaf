@@ -60,11 +60,6 @@ extension Workspace {
             list.append(PaletteCommand(id: "duplicate", title: "Duplicate", symbol: "plus.square.on.square", section: section, keywords: ["copy"]) { [self] in
                 duplicate(url)
             })
-            let favorite = isFavorite(url)
-            list.append(PaletteCommand(id: "favorite", title: favorite ? "Remove from Favorites" : "Add to Favorites",
-                                       symbol: favorite ? "star.slash" : "star", section: section, keywords: ["star", "pin"]) { [self] in
-                toggleFavorite(url)
-            })
             if isNote {
                 list.append(PaletteCommand(id: "remind", title: "Remind Me…", symbol: "bell", section: section, keywords: ["reminder", "notification"]) { [self] in
                     askForReminder(url)

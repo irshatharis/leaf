@@ -171,7 +171,7 @@ struct DocumentToolbar: ToolbarContent {
                 Button { workspace.newTodoRequest += 1 } label: { Label("New To-do", systemImage: "plus") }
                     .help("New to-do for today")
             }
-        } else if !workspace.showsFavorites {
+        } else {
             ToolbarSpacer(.fixed)
             ToolbarItem {
                 Button {
@@ -207,12 +207,10 @@ struct MoreMenu: View {
 
     var body: some View {
         AppMenuButton {
-            let favorite = workspace.isFavorite(url)
-            MenuEntry(favorite ? "Remove from Favorites" : "Add to Favorites", favorite ? "star.slash" : "star") { workspace.toggleFavorite(url) }
             if workspace.note != nil {
                 MenuEntry("Remind Me…", "bell") { workspace.askForReminder(url) }
+                MenuEntry.divider
             }
-            MenuEntry.divider
             MenuEntry("Rename", "pencil", enabled: workspace.note?.isLoaded == true) { workspace.editor.focusTitle() }
             SharedMenus.moveTo(url, workspace: workspace)
             MenuEntry("Duplicate", "plus.square.on.square", keys: "⌘D") { workspace.duplicate(url) }
@@ -246,8 +244,6 @@ struct DetailColumn: View {
         Group {
             if workspace.showsTodos {
                 TodosView(workspace: workspace)
-            } else if workspace.showsFavorites {
-                FavoritesPage(workspace: workspace)
             } else if let url = workspace.currentURL {
                 if workspace.note != nil {
                     // The wait for a note still in iCloud shows below the toolbar, as a PDF's does.

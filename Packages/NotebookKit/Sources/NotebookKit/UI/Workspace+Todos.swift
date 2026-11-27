@@ -54,7 +54,7 @@ extension Workspace {
         #endif
     }
 
-    /// To-dos or Favorites shows next to the sidebar: its tile is selected, and no row.
+    /// To-dos shows next to the sidebar: no row is selected.
     func sidebarSelectList() {
         #if os(macOS)
         sidebar?.selectNoRow()

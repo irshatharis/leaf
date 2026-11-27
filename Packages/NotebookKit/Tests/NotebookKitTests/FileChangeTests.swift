@@ -280,14 +280,13 @@ final class FileChangeTests: XCTestCase {
         assertNothingOnTheMainThread()
     }
 
-    /// A file on its way to the Trash, or a folder it is in, is out of Recent and Favorites until it has gone, and back
-    /// in them if it couldn't go. The same file asked to go twice is out until both are done.
+    /// A file on its way to the Trash, or a folder it is in, is out of Recent until it has gone, and back in it
+    /// if it couldn't go. The same file asked to go twice is out until both are done.
     func testFilesOnTheirWayToTheTrashLeaveTheLists() async throws {
         let (workspace, _) = try await makeSidebar()
         workspace.open(draft)
         workspace.open(other)
         workspace.open(chart)
-        workspace.toggleFavorite(draft)
         XCTAssertEqual(workspace.recentURLs.map(\.lastPathComponent), ["Other.md", "Draft.md"])
         XCTAssertTrue(workspace.recentURLs(includingOpen: true).contains(draft))
 
@@ -299,7 +298,6 @@ final class FileChangeTests: XCTestCase {
         XCTAssertEqual(workspace.recentURLs, [])
         // Nor on the iPhone's first screen, which lists the open note too.
         XCTAssertFalse(workspace.recentURLs(includingOpen: true).contains(draft))
-        XCTAssertEqual(workspace.favoriteURLs, [])
 
         workspace.beginLeaving(papers)
         workspace.endLeaving(papers)
@@ -308,7 +306,6 @@ final class FileChangeTests: XCTestCase {
         workspace.endLeaving(URL(fileURLWithPath: HiddenFolders.withoutPrivate(papers.path)), animated: true)
         XCTAssertFalse(workspace.isLeaving(draft))
         XCTAssertEqual(workspace.recentURLs.map(\.lastPathComponent), ["Other.md", "Draft.md"])
-        XCTAssertEqual(workspace.favoriteURLs.map(\.lastPathComponent), ["Draft.md"])
     }
 
     /// Deleted while its rename, or its folder's, is still under way, a file stays out of the lists under its new name
