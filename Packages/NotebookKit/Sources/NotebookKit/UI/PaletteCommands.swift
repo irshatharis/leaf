@@ -187,11 +187,11 @@ extension Workspace {
         if hasColumns {
             list.append(PaletteCommand(id: "sidebar", title: isSidebarVisible ? "Hide Sidebar" : "Show Sidebar", symbol: "sidebar.left", section: view,
                                        keys: ["⌘", "B"]) { [self] in
-                withAnimation(Theme.spring) { isSidebarVisible.toggle() }
+                withAnimation(Theme.slide) { isSidebarVisible.toggle() }
             })
             list.append(PaletteCommand(id: "outline", title: isOutlineVisible ? "Hide Outline" : "Show Outline", symbol: "sidebar.right", section: view,
                                        keys: ["⇧", "⌘", "B"], keywords: ["inspector", "headings"]) { [self] in
-                withAnimation(Theme.spring) { isOutlineVisible.toggle() }
+                withAnimation(Theme.slide) { isOutlineVisible.toggle() }
             })
         }
         #if os(macOS)

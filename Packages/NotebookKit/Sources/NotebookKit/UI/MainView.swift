@@ -53,8 +53,9 @@ struct MainView: View {
         }
         .navigationTitle(workspace.currentTitle)
         .toolbarVisibility(headerVisible ? .visible : .hidden, for: .windowToolbar)
-        .background(WindowChrome(showsHeader: headerVisible, peek: $headerPeek))
-        .transaction { $0.animation = nil }
+        .background(WindowChrome(showsHeader: headerVisible, peek: $headerPeek,
+                                 back: { workspace.goBack() }, forward: { workspace.goForward() }))
+        .animation(Theme.slide, value: headerVisible)
         .overlay { PaletteHost(workspace: workspace, actions: paletteActions) }
         .alert(conflictTitle, isPresented: Binding(get: { workspace.note?.conflict != nil }, set: { _ in }), presenting: workspace.note?.conflict) { _ in
             Button("Keep Both") { workspace.resolveConflict(.keepBoth) }
@@ -82,14 +83,23 @@ struct MainView: View {
 }
 
 /// The window's title bar without a title, its traffic lights shown with the header. With the header hidden, moving
-/// the pointer to the window's top edge shows it until the pointer leaves the header.
+/// the pointer to the window's top edge shows it until the pointer leaves the header. Keys as in Neovim: ⌃O and ⌃I go
+/// back and forward, ⌃N and ⌃P act as the down and up arrows in every list.
 private struct WindowChrome: NSViewRepresentable {
     let showsHeader: Bool
     @Binding var peek: Bool
+    let back: () -> Void
+    let forward: () -> Void
 
     final class Coordinator {
         var monitor: Any?
-        deinit { if let monitor { NSEvent.removeMonitor(monitor) } }
+        var keys: Any?
+        var back: () -> Void = {}
+        var forward: () -> Void = {}
+        deinit {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            if let keys { NSEvent.removeMonitor(keys) }
+        }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -97,15 +107,34 @@ private struct WindowChrome: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { NSView() }
 
     func updateNSView(_ view: NSView, context: Context) {
+        context.coordinator.back = back
+        context.coordinator.forward = forward
         DispatchQueue.main.async {
             guard let window = view.window else { return }
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             window.styleMask.insert(.fullSizeContentView)
-            for kind in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
-                window.standardWindowButton(kind)?.isHidden = !showsHeader
-            }
+            let buttons = [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].compactMap { window.standardWindowButton($0) }
+            if showsHeader { buttons.forEach { $0.isHidden = false } }
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.2
+                buttons.forEach { $0.animator().alphaValue = showsHeader ? 1 : 0 }
+            }, completionHandler: {
+                if !showsHeader { buttons.forEach { $0.isHidden = true } }
+            })
             guard context.coordinator.monitor == nil else { return }
+            let coordinator = context.coordinator
+            coordinator.keys = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak window] event in
+                guard let window, event.window === window,
+                      event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .control else { return event }
+                switch event.charactersIgnoringModifiers {
+                case "o": coordinator.back(); return nil
+                case "i": coordinator.forward(); return nil
+                case "n": return Self.arrow(NSDownArrowFunctionKey, keyCode: 125, like: event)
+                case "p": return Self.arrow(NSUpArrowFunctionKey, keyCode: 126, like: event)
+                default: return event
+                }
+            }
             window.acceptsMouseMovedEvents = true
             let peek = $peek
             context.coordinator.monitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak window] event in
@@ -119,6 +148,14 @@ private struct WindowChrome: NSViewRepresentable {
                 return event
             }
         }
+    }
+
+    private static func arrow(_ key: Int, keyCode: UInt16, like event: NSEvent) -> NSEvent? {
+        let characters = String(Character(UnicodeScalar(UInt16(key))!))
+        return NSEvent.keyEvent(with: .keyDown, location: event.locationInWindow, modifierFlags: [.numericPad, .function],
+                                timestamp: event.timestamp, windowNumber: event.windowNumber, context: nil,
+                                characters: characters, charactersIgnoringModifiers: characters,
+                                isARepeat: event.isARepeat, keyCode: keyCode)
     }
 }
 

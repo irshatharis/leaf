@@ -71,7 +71,7 @@ public struct Typography: Hashable, Codable {
 
     public var face = Face.system
     #if os(macOS)
-    public var size: CGFloat = 15
+    public var size: CGFloat = 17
     #else
     /// iOS's size for reading, where the Mac's is smaller.
     public var size: CGFloat = 17

@@ -75,6 +75,8 @@ public enum Theme {
     static let chipOpen = NSColor.dynamic { isDark in isDark ? NSColor.white.withAlphaComponent(0.15) : NSColor.black.withAlphaComponent(0.09) }
 
     static let spring = Animation.spring(response: 0.3, dampingFraction: 0.82)
+    /// Sidebars and the header sliding in and out.
+    static let slide = Animation.smooth(duration: 0.28)
     static let quick = Animation.easeOut(duration: 0.14)
     /// Text easing into a new look while you type: bold thickening, a heading growing, marks fading.
     static let textStyleDuration: TimeInterval = 0.18

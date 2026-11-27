@@ -114,14 +114,14 @@ public struct NotebookScene: Scene {
             // The window's own sidebar item, bound to the same state as the toolbar button.
             CommandGroup(replacing: .sidebar) {
                 Button {
-                    workspace.inMainWindow { withAnimation(Theme.spring) { workspace.isSidebarVisible.toggle() } }
+                    workspace.inMainWindow { withAnimation(Theme.slide) { workspace.isSidebarVisible.toggle() } }
                 } label: {
                     Label(workspace.isSidebarVisible ? "Hide Sidebar" : "Show Sidebar", systemImage: "sidebar.left")
                 }
                 .keyboardShortcut("b", modifiers: .command)
                 .disabled(workspace.locations.isEmpty)
                 Button {
-                    workspace.inMainWindow { withAnimation(Theme.spring) { workspace.isOutlineVisible.toggle() } }
+                    workspace.inMainWindow { withAnimation(Theme.slide) { workspace.isOutlineVisible.toggle() } }
                 } label: {
                     Label(workspace.isOutlineVisible ? "Hide Outline" : "Show Outline", systemImage: "sidebar.right")
                 }
@@ -144,7 +144,7 @@ public struct NotebookScene: Scene {
                     .keyboardShortcut("+", modifiers: .command)
                 Button { settings.changeTextSize(by: -1) } label: { Label("Smaller", systemImage: "textformat.size.smaller") }
                     .keyboardShortcut("-", modifiers: .command)
-                Button { settings.typography.size = 15 } label: { Label("Actual Size", systemImage: "textformat.size") }
+                Button { settings.typography.size = 17 } label: { Label("Actual Size", systemImage: "textformat.size") }
                     .keyboardShortcut("0", modifiers: .command)
             }
             CommandMenu("Go") {

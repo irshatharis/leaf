@@ -43,7 +43,7 @@ extension EditorController: NSTextViewDelegate, NSTextFieldDelegate {
         scrollView.borderType = .noBorder
         scrollView.scrollerStyle = .overlay
         // Room for the toolbar, which the note scrolls under.
-        scrollView.automaticallyAdjustsContentInsets = true
+        scrollView.automaticallyAdjustsContentInsets = false
         scrollView.contentView.postsBoundsChangedNotifications = true
         NotificationCenter.default.addObserver(self, selector: #selector(scrolled), name: NSView.boundsDidChangeNotification, object: scrollView.contentView)
     }

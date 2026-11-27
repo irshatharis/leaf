@@ -20,19 +20,21 @@ final class MarkdownTextView: NSTextView {
 
     static let titleTop: CGFloat = 44
     static let titleHeight: CGFloat = 40
-    static let headerHeight: CGFloat = 112
+    static let headerHeight: CGFloat = titleTop + titleHeight + 12
 
     /// Set on a copy laid out for export or printing: this much margin all round, and no date under the title.
     var exportMargin: CGFloat? {
         didSet {
-            metaLabel.isHidden = exportMargin != nil
             if exportMargin != nil { reminderButton.isHidden = true }
             updateInsets()
         }
     }
 
     private var titleTop: CGFloat { exportMargin ?? Self.titleTop }
-    var headerHeight: CGFloat { exportMargin.map { $0 + Self.titleHeight + 18 } ?? Self.headerHeight }
+    var headerHeight: CGFloat {
+        if let exportMargin { return exportMargin + Self.titleHeight + 18 }
+        return Self.headerHeight + (reminderButton.isHidden ? 0 : 22)
+    }
 
     override init(frame frameRect: NSRect, textContainer container: NSTextContainer?) {
         super.init(frame: frameRect, textContainer: container)
@@ -44,6 +46,7 @@ final class MarkdownTextView: NSTextView {
         titleField.cell?.isScrollable = true
         titleField.setAccessibilityLabel("Title")
         addSubview(titleField)
+        metaLabel.isHidden = true
         metaLabel.font = .systemFont(ofSize: 12.5)
         metaLabel.textColor = Theme.textTertiary
         addSubview(metaLabel)
