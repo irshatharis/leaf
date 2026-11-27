@@ -691,25 +691,6 @@ final class HandwrittenNoteTests: XCTestCase {
 
     // MARK: - Search
 
-    func testSearchReadsTheHandwriting() throws {
-        // The sample's lecture notes, read as search reads a page without text of its own: drawn, then Live Text.
-        let url = folder.appendingPathComponent("Lecture 4.pdf")
-        DemoHandwriting.writeLecture(to: url)
-        let page = try XCTUnwrap(PDFDocument(url: url)?.page(at: 0))
-        XCTAssertTrue(page.string?.isEmpty ?? true, "no text of its own")
-        let box = page.bounds(for: .mediaBox)
-        let scale = 2000 / box.height
-        let context = try XCTUnwrap(CGContext(data: nil, width: Int(box.width * scale), height: Int(box.height * scale), bitsPerComponent: 8, bytesPerRow: 0,
-                                              space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue))
-        context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
-        context.fill(CGRect(x: 0, y: 0, width: context.width, height: context.height))
-        context.scaleBy(x: scale, y: scale)
-        page.draw(with: .mediaBox, to: context)
-        let text = TextRecognizer.recognize(try XCTUnwrap(context.makeImage())).lowercased()
-        for word in ["lecture", "eigenvalues", "summary", "direction"] {
-            XCTAssertTrue(text.contains(word), "\(word) not read in: \(text)")
-        }
-    }
 
     // MARK: - Writing anew
 

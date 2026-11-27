@@ -115,8 +115,8 @@ final class LocationTests: XCTestCase {
 
         XCTAssertEqual(Location.ownFolderName(among: [own], device: "On My iPhone"), "On My iPhone")
         XCTAssertEqual(Location.ownFolderName(among: [own, icloud], device: "On My iPhone"), "On My iPhone")
-        XCTAssertEqual(Location.ownFolderName(among: [own, onMyIPhone], device: "On My iPhone"), "Notebook")
-        XCTAssertEqual(Location.ownFolderName(among: [onMyIPhone, own, icloud], device: "On My iPad"), "Notebook")
+        XCTAssertEqual(Location.ownFolderName(among: [own, onMyIPhone], device: "On My iPhone"), "Leaf")
+        XCTAssertEqual(Location.ownFolderName(among: [onMyIPhone, own, icloud], device: "On My iPad"), "Leaf")
         // Its folder is known by its path alone, as the system writes it with or without "/private".
         XCTAssertTrue(Location.isFolder(URL(fileURLWithPath: "/private" + own.path), own.url))
         XCTAssertTrue(Location.isFolder(URL(fileURLWithPath: own.path + "/Journal/.."), own.url))
@@ -269,7 +269,7 @@ final class LocationTests: XCTestCase {
         try await settle(workspace)
 
         let problem = workspace.unreadable(location)
-        XCTAssertEqual(problem.title, "Notebook can’t read “MyData”.")
+        XCTAssertEqual(problem.title, "Leaf can’t read “MyData”.")
         XCTAssertEqual(problem.removableLocation, location.id)
         XCTAssertTrue(problem.message.hasSuffix("Removing it from the sidebar deletes nothing."), problem.message)
         XCTAssertNil(Problem(title: "Something", message: "else").removableLocation, "other alerts have only OK")
@@ -298,7 +298,7 @@ final class LocationTests: XCTestCase {
         window.contentView!.addSubview(sidebar.scrollView)
         window.layoutIfNeeded()
         let outline = sidebar.outline
-        XCTAssertEqual(outline.numberOfRows, 9, "Search and To-dos, then two sections, iCloud Drive’s open, then Open Folder")
+        XCTAssertEqual(outline.numberOfRows, 8, "Search, then two sections, iCloud Drive’s open, then Open Folder")
         let openFolderRow = outline.numberOfRows - 1
         let openFolder = try XCTUnwrap(outline.item(atRow: openFolderRow) as? SidebarEntry)
         XCTAssertTrue(openFolder.isOpenFolder, "Open Folder last of all, after the files")

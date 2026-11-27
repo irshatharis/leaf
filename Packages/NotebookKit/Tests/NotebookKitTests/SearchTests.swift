@@ -222,7 +222,7 @@ final class SearchTests: XCTestCase {
                                      text: nil, folded: nil, foldedName: SearchIndex.fold(name), foldedFileName: SearchIndex.fold(name + ".md"),
                                      path: url.path, folder: "/Notes")
         }
-        let corpus = SearchCorpus(version: 0, entries: entries, hidden: [], recognized: [:])
+        let corpus = SearchCorpus(version: 0, entries: entries, hidden: [])
         let query = try XCTUnwrap(SearchCorpus.Query("abz"))
         XCTAssertEqual(corpus.matchNames(query, files: 6, folders: 0, others: 3).files.count, 6, "a-xe b-ox z-ebra")
         // Wanted as the loose matching starts, not once it is under way.
@@ -262,11 +262,11 @@ final class SearchTests: XCTestCase {
                                      foldedName: SearchIndex.fold(name), foldedFileName: SearchIndex.fold(name + ".md"),
                                      path: url.path, folder: "/Notes")
         }
-        let corpus = SearchCorpus(version: 0, entries: [entry("Plan B", modified: 200), entry("Plan", modified: 100)], hidden: [], recognized: [:])
+        let corpus = SearchCorpus(version: 0, entries: [entry("Plan B", modified: 200), entry("Plan", modified: 100)], hidden: [])
         let found = corpus.matchNames(try XCTUnwrap(SearchCorpus.Query("plan")), files: 2, folders: 0).files
         XCTAssertEqual(found.map { corpus.items[$0].name }, ["Plan", "Plan B"], "the whole name before a newer one that starts with it")
         let headings = SearchCorpus(version: 0, entries: [{ var note = entry("Trip", modified: 0); note.headings = [.init(level: 2, title: "Plan")]; return note }()],
-                                    hidden: [], recognized: [:])
+                                    hidden: [])
         XCTAssertEqual(headings.search(try XCTUnwrap(SearchCorpus.Query("plan"))).headings.map(\.heading.title), ["Plan"])
     }
 
@@ -292,22 +292,6 @@ final class SearchTests: XCTestCase {
         ])
     }
 
-    func testTextReadInPicturesIsFoundAsTheNotesThatShowThem() async throws {
-        let note = try write("Trip/Kyoto.md", "Tickets:\n\n![](.assets/ticket%201.png)\n\n![Drawing](.assets/Sketch.png)\n")
-        let index = try await makeIndex()
-        let folder = note.deletingLastPathComponent().path
-        index.recognized = [
-            folder + "/.assets/ticket 1.png": PictureText("SHINKANSEN NOZOMI 225\nKyoto 14:09", isHandwriting: false),
-            folder + "/.assets/Sketch.png": PictureText("ryokan by the river", isHandwriting: true),
-        ]
-        var results = try search(index, "nozomi")
-        XCTAssertEqual(results.pictures.map(\.item.name), ["Kyoto"])
-        XCTAssertEqual(results.pictures.first?.source, .picture(asset: "ticket 1.png"))
-        XCTAssertEqual(results.pictures.first?.snippet, "SHINKANSEN NOZOMI 225")
-        results = try search(index, "river")
-        XCTAssertEqual(results.pictures.first?.source, .drawing(asset: "Sketch.png"))
-        XCTAssertTrue(results.texts.isEmpty, "not in the note's own text")
-    }
 
     func testAPDFsHitSaysItsPage() throws {
         let text = "Cover page\u{0C}Contents\nFlights\u{0C}Return flight on Sunday, seat 32A"
