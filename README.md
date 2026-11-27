@@ -15,12 +15,24 @@ cd leaf
 Tools/build.sh
 ```
 
-This installs `/Applications/Leaf.app` and links the `leaf` command into `~/.local/bin`.
+This installs `/Applications/Leaf.app` and the `leaf` command into `~/.local/bin`.
 
 ## Use
 
-- `leaf path/to/note.md` opens a note in the main window (in a window of its own when it is outside your folders).
-  A missing `.md` path is created first. `leaf some/folder` adds a folder to the sidebar.
+- Everything opens in Leaf's one window, also a note outside your folders (it shows with no row selected in the
+  sidebar). The 20 files opened last stay in ⌘P.
+- The `leaf` command opens notes and folders from the terminal and returns at once:
+
+  ```sh
+  leaf                    # bring Leaf to the front
+  leaf notes/today.md     # open a note; a missing .md, .markdown or .adoc file is created first
+  leaf ~/repo/docs/a.md b.md
+  leaf ~/notes            # add the folder to the sidebar, or show it there
+  leaf --help
+  ```
+
+  `LEAF_APP` points it at another build, and `LEAF_APP_ARGS` passes arguments when it starts Leaf, such as
+  `LEAF_APP=build/Build/Products/Release/Leaf.app LEAF_APP_ARGS="-NotebookLibrary ~/test-notes" build/leaf a.md`.
 - ⌘P goes to a file, recently opened first. ⌘K runs a command. ⌥⌘F searches inside notes.
 - ⌘B toggles the sidebar, ⇧⌘B the outline. ⌘L makes a checklist, ⇧⌘L a link.
 - The header is hidden; move the pointer to the top edge to show it, or run Show Header from ⌘K to keep it.
