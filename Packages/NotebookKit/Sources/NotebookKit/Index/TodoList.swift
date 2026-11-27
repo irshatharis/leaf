@@ -314,6 +314,15 @@ enum TodoRow: Identifiable, Hashable {
     }
 
     /// When it is due: a to-do's day (its start) or time, a note's time.
+    /// The name of the note it is in, by which rows sort within a group; to-dos in no note go last.
+    var noteName: String {
+        let url: URL? = switch self {
+        case .todo(let item): item.isLoose ? nil : item.url
+        case .note(let note): note.url
+        }
+        return url?.deletingPathExtension().lastPathComponent ?? "\u{10FFFF}"
+    }
+
     var date: Date? {
         switch self {
         case .todo(let item): item.todo.due?.date()
@@ -383,7 +392,7 @@ struct TodoSection: Identifiable, Hashable {
 
 enum TodoGroups {
     /// The groups that have something in them, in order. Dated rows go by their time (a day without a time first on
-    /// its day), the rest by note, as the notes were last changed.
+    /// its day), then by the name of their note; the rest by the name of their note.
     static func sections(todos: [TodoList.Item], notes: [NoteReminderRow], in folder: URL? = nil, now: Date = .now,
                          calendar: Calendar = .current) -> [TodoSection] {
         var groups: [TodoSection.Kind: [TodoRow]] = [:]
@@ -392,16 +401,18 @@ enum TodoGroups {
         }
         return TodoSection.Kind.allCases.compactMap { kind in
             guard var rows = groups[kind] else { return nil }
-            if kind != .someday {
-                // Stable: rows at the same time keep the order of their notes.
-                rows = rows.enumerated().sorted { a, b in
+            // Stable: rows of one note keep their order in it.
+            rows = rows.enumerated().sorted { a, b in
+                if kind != .someday {
                     let aDay = calendar.startOfDay(for: a.element.date ?? now), bDay = calendar.startOfDay(for: b.element.date ?? now)
                     if aDay != bDay { return aDay < bDay }
                     if a.element.hasTime != b.element.hasTime { return !a.element.hasTime }
                     if a.element.date != b.element.date { return (a.element.date ?? now) < (b.element.date ?? now) }
-                    return a.offset < b.offset
-                }.map(\.element)
-            }
+                }
+                let order = a.element.noteName.localizedStandardCompare(b.element.noteName)
+                if order != .orderedSame { return order == .orderedAscending }
+                return a.offset < b.offset
+            }.map(\.element)
             return TodoSection(kind: kind, rows: rows)
         }
     }
