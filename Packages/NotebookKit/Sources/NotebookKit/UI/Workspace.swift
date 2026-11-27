@@ -154,8 +154,14 @@ public final class Workspace: NSObject {
     /// The main window is open: it can be closed while Notebook keeps running. Open until it says it closed: at launch
     /// it is on its way, and tests have a window of their own.
     var isMainWindowOpen = true
-    /// Commands for the main window given while it was closed (⌘N, ⌘K): they run once it is there again.
+    /// Commands for the main window given while it was closed (⌘N, ⌘K), or while the app starts: they run once it is
+    /// there again.
     @ObservationIgnored private var waitingForWindow: [() -> Void] = []
+    /// As the app finishes launching, SwiftUI takes the main window's views down and puts them back up, and a note
+    /// opened in between (from the leaf command, as Leaf starts) was left out of them: "No Note Open", with the note
+    /// selected in the sidebar. What comes for the window waits until it is up for good.
+    @ObservationIgnored var launch = LaunchPhase.settled
+    enum LaunchPhase { case starting, finished, settled }
     /// Another window, such as Settings, is the one you are working in: the File and Edit menus have no note there.
     var isOtherWindowInFront = false
     @ObservationIgnored weak var sidebar: SidebarController?
@@ -2467,19 +2473,34 @@ public final class Workspace: NSObject {
     /// Runs a command of the main window in it: brought to the front, or opened again first when it was closed, so what
     /// the command shows (a new note, search) is there, and its Undo is the window's.
     func inMainWindow(_ action: @escaping () -> Void) {
-        if isMainWindowOpen {
+        if isMainWindowOpen, launch == .settled {
             // The sidebar is in the main window whatever it shows.
             if sidebar?.outline.window?.isKeyWindow != true { showWindow?() }
             workingInMainWindow()
             return action()
         }
         waitingForWindow.append(action)
-        showWindow?()
+        if launch == .settled { showWindow?() }
+    }
+
+    /// The app finished launching: its window settles once it is up again, or in a moment if it already is.
+    func finishedLaunching() {
+        guard launch == .starting else { return }
+        launch = .finished
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.launchSettled() }
+    }
+
+    private func launchSettled() {
+        guard launch != .settled else { return }
+        launch = .settled
+        if isMainWindowOpen { mainWindowOpened() }
     }
 
     /// The main window opened (again): the commands given while it was closed run, once its views are in it.
     func mainWindowOpened() {
         isMainWindowOpen = true
+        if launch == .finished { return launchSettled() }
+        guard launch == .settled else { return }
         DispatchQueue.main.async { [self] in
             moveUndoToMainWindow()
             let waiting = waitingForWindow

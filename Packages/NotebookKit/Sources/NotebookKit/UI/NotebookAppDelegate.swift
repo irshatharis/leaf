@@ -9,8 +9,13 @@ public final class NotebookAppDelegate: NSObject, NSApplicationDelegate {
     public func applicationWillFinishLaunching(_ notification: Notification) {
         MainActor.assumeIsolated {
             ReminderNotifications.activate()
+            Workspace.shared.launch = .starting
             Workspace.shared.followMainWindow()
         }
+    }
+
+    public func applicationDidFinishLaunching(_ notification: Notification) {
+        MainActor.assumeIsolated { Workspace.shared.finishedLaunching() }
     }
 
     /// Quitting waits for notes still being written, off the main thread, which keeps going meanwhile. So it does for
