@@ -12,14 +12,14 @@ extension FormatCommand {
         case .title: MenuKeys.text("T", shift: true)
         case .heading: MenuKeys.text("H", shift: true)
         case .subheading: MenuKeys.text("J", shift: true)
-        case .body: MenuKeys.text("B", shift: true)
-        case .bold: MenuKeys.text("B")
+        case .body: nil
+        case .bold: nil
         case .italic: MenuKeys.text("I")
         case .strikethrough: MenuKeys.text("X", shift: true)
         case .highlight: MenuKeys.text("H", control: true)
         case .code: MenuKeys.text("E")
-        case .link: MenuKeys.text("L")
-        case .checklist: MenuKeys.text("L", shift: true)
+        case .link: MenuKeys.text("L", shift: true)
+        case .checklist: MenuKeys.text("L")
         case .bulletedList: MenuKeys.text("7", shift: true)
         case .numberedList: MenuKeys.text("9", shift: true)
         case .quote: MenuKeys.text("'")

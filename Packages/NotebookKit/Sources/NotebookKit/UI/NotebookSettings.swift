@@ -114,6 +114,11 @@ public final class NotebookSettings {
         didSet { changedSidebar("foldersFirst", foldersFirst) }
     }
 
+    /// The window's header (traffic lights and toolbar) stays shown; off, it shows only while the pointer is at the top.
+    public var showsHeader: Bool {
+        didSet { UserDefaults.standard.set(showsHeader, forKey: "showsHeader") }
+    }
+
     /// How the files in each folder are sorted: by name, or newest first by when they were edited or made.
     public let fileOrders = FileOrders()
 
@@ -242,6 +247,7 @@ public final class NotebookSettings {
         showsOnlyNotes = defaults.bool(forKey: "showsOnlyNotes")
         dimsOtherFiles = defaults.bool(forKey: "dimsOtherFiles")
         foldersFirst = defaults.object(forKey: "foldersFirst") as? Bool ?? true
+        showsHeader = defaults.object(forKey: "showsHeader") as? Bool ?? false
         fileColors = (defaults.dictionary(forKey: "fileColors") as? [String: Int] ?? [:]).reduce(into: [:]) { colors, saved in
             if let kind = FileKind(rawValue: saved.key), kind != .folder, let color = FolderColor(rawValue: saved.value) { colors[kind] = color }
         }

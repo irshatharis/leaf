@@ -5,9 +5,13 @@ import UIKit
 #endif
 import SwiftUI
 
-/// What ⌘K shows.
+/// What the palette shows.
 enum PaletteMode: Hashable {
-    /// Files, folders, headings, the words in notes, PDFs and pictures, and commands. With ">" first, only commands.
+    /// ⌘K: commands only.
+    case commands
+    /// ⌘P: notes and files by name, recently opened first.
+    case files
+    /// ⌥⌘F: names, headings and the words in notes and PDFs.
     case search
     /// The folders, to move a file into.
     case move(URL)
@@ -38,10 +42,8 @@ struct PaletteRow: Identifiable {
     var action: Action
 }
 
-/// ⌘K: one field for everything, as in Issues. Type to find notes and files by name, folders, headings, and words in
-/// notes, PDFs, pictures and handwriting, as search does; or a few letters of a command to run it: on the open note,
-/// to make something, to go somewhere, for the window or the settings. With ">" first it lists only commands. A glass
-/// panel over the window, like Spotlight; arrow keys and Return pick, Escape closes.
+/// The palette over the window: ⌘K runs commands, ⌘P goes to a file, ⌥⌘F searches inside notes. Arrow keys and
+/// Return pick, Escape closes. It appears and goes at once, with no animation.
 struct CommandPalette: View {
     let workspace: Workspace
     let mode: PaletteMode
@@ -102,7 +104,7 @@ struct CommandPalette: View {
         .onAppear {
             focused = true
             configure()
-            search.update(query)
+            if mode != .commands { search.update(query) }
         }
         // Spotlight's Search in App, as the palette opens or while it is open.
         .onChange(of: workspace.paletteStart?.id, initial: true) { _, _ in
@@ -129,15 +131,18 @@ struct CommandPalette: View {
         #endif
         .onChange(of: query) { _, text in
             hasChosen = false
-            let commandsOnly = text.trimmingCharacters(in: .whitespaces).hasPrefix(">")
-            search.update(commandsOnly ? "" : text)
+            if mode != .commands { search.update(text) }
         }
     }
 
     private var placeholder: String {
-        if case .move = mode { return "Find a folder" }
-        if case .moveTodo = mode { return "Find a note" }
-        return "Search notes and files, or type a command"
+        switch mode {
+        case .commands: "Run a command"
+        case .files: "Go to file"
+        case .search: "Search in notes"
+        case .move: "Find a folder"
+        case .moveTodo: "Find a note"
+        }
     }
 
     private func configure() {
@@ -147,12 +152,14 @@ struct CommandPalette: View {
         } else if case .moveTodo = mode {
             search.limits = SearchCorpus.Limits(files: 30, folders: 0, headings: 0, texts: 0, pictures: 0)
             search.offersNewNote = false
+        } else if case .files = mode {
+            search.limits = SearchCorpus.Limits(files: 40, folders: 0, headings: 0, texts: 0, pictures: 0, others: 10)
+            search.offersNewNote = false
         } else {
-            search.limits = SearchCorpus.Limits(files: 6, folders: 4, headings: 4, texts: 8, pictures: 4)
-            search.offersNewNote = true
+            search.limits = SearchCorpus.Limits(files: 6, folders: 4, headings: 4, texts: 12, pictures: 4)
+            search.offersNewNote = false
         }
-        // A few, so the commands for what is open show below them.
-        search.recentLimit = 4
+        search.recentLimit = mode == .files ? 12 : 0
     }
 
     // MARK: - The list
@@ -210,6 +217,8 @@ struct CommandPalette: View {
     private var emptyText: String {
         if workspace.index.isBuilding, workspace.index.corpus.items.isEmpty { return "Reading your files…" }
         if search.isSearching { return "Searching…" }
+        let typed = query.trimmingCharacters(in: .whitespaces)
+        if typed.isEmpty { return mode == .files ? "No recent files. Type a name." : "Type to search" }
         return "Nothing matches “\(query.trimmingCharacters(in: .whitespaces))”"
     }
 
@@ -282,17 +291,12 @@ struct CommandPalette: View {
         if case .move(let url) = mode { return folderRows(moving: url) }
         if case .moveTodo = mode { return noteRows() }
         let trimmed = query.trimmingCharacters(in: .whitespaces)
-        let commands = workspace.paletteCommands(actions)
-        if trimmed.hasPrefix(">") {
-            let filter = trimmed.dropFirst().trimmingCharacters(in: .whitespaces)
-            return Self.matching(commands, filter).map { Self.commandRow($0, section: filter.isEmpty ? $0.section : "Commands") }
+        if case .commands = mode {
+            let commands = workspace.paletteCommands(actions)
+            return Self.matching(commands, trimmed).map { Self.commandRow($0, section: trimmed.isEmpty ? $0.section : "Commands") }
         }
-        guard !trimmed.isEmpty else {
-            // What you opened last, then every command, by what it is for.
-            return Self.resultRows(search.query.isEmpty ? shown(search.sections) : []) + commands.map { Self.commandRow($0, section: $0.section) }
-        }
-        // The results that go with what was typed: while they are on their way, the last ones stay.
-        return Self.rows(for: trimmed, commands: commands, results: shown(search.sections))
+        // While results for what was typed are on their way, the last ones stay.
+        return Self.resultRows(shown(search.sections).filter { $0.title != nil })
     }
 
     /// Without what was just deleted, which search finds until it has read the folder again.
@@ -304,27 +308,6 @@ struct CommandPalette: View {
         }
     }
 
-    /// What ⌘K lists for what was typed: the files and folders, the commands named like it (first when one starts
-    /// with it), the rest of what search found, then commands and names only a bit like it, and New Note.
-    static func rows(for trimmed: String, commands: [PaletteCommand], results: [SearchSection]) -> [PaletteRow] {
-        let folded = SearchIndex.fold(trimmed)
-        // Commands only a bit like what was typed go last, as names do: "del" has its letters in Show Hidden Folders.
-        // Two letters are in order in most of them.
-        let scored = scoredMatching(commands, trimmed)
-        let found = scored.filter { $0.score >= FuzzyMatch.goodScore }.prefix(8).map { commandRow($0.command, section: "Commands") }
-        let similar = SearchCorpus.Query.letters(in: folded) < SearchCorpus.Query.lettersForSimilar ? []
-            : scored.filter { $0.score < FuzzyMatch.goodScore }.prefix(3).map { commandRow($0.command, section: SearchSection.similarCommands) }
-        // A command named like what was typed comes first; otherwise after the files and folders.
-        let commandFirst = found.first.map { row in
-            SearchIndex.fold(row.title).split(separator: " ").contains { $0.hasPrefix(folded) }
-        } ?? false
-        let names = results.filter { $0.title == "Files" || $0.title == "Folders" }
-        let rest = results.filter { $0.title != "Files" && $0.title != "Folders" && $0.title != nil }
-        // New Note, at the very end.
-        let new = results.filter { $0.title == nil }
-        let first = commandFirst ? found + resultRows(names) : resultRows(names) + found
-        return first + resultRows(rest) + similar + resultRows(new)
-    }
 
     private static func matching(_ commands: [PaletteCommand], _ filter: String) -> [PaletteCommand] {
         guard !filter.isEmpty else { return commands }
@@ -542,35 +525,39 @@ struct PaletteHost: View {
                         workspace.paletteSearch.clear()
                         workspace.focusContent()
                     }
-                    .transition(.opacity)
                 CommandPalette(workspace: workspace, mode: mode, actions: actions)
                     .id(mode)
                     .padding(.top, top)
                     .padding(.horizontal, 16)
-                    .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .top)).combined(with: .offset(y: -6)))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .animation(.spring(response: 0.26, dampingFraction: 0.86), value: workspace.palette)
+        .transaction { $0.animation = nil }
     }
 }
 
 @MainActor
 extension Workspace {
-    /// ⌘K: opens the palette, or closes it when it is open.
-    func togglePalette() {
-        if palette == nil {
-            palette = .search
-        } else {
+    /// ⌘K for commands, ⌘P for files, ⌥⌘F to search: the same key again closes it, another switches to its mode.
+    func togglePalette(_ mode: PaletteMode = .commands) {
+        if palette == mode {
             palette = nil
             paletteSearch.clear()
             focusContent()
+        } else {
+            paletteSearch.clear()
+            palette = mode
         }
     }
 
-    /// Search at the top of the sidebar and Go › Search (⌥⌘F): ⌘K, left open if it is.
+    /// Go › Search (⌥⌘F): the palette searching inside notes, left open if it is.
     func openSearch() {
-        if palette == nil { palette = .search }
+        if palette != .search { togglePalette(.search) }
+    }
+
+    /// Search at the top of the sidebar: ⌘P.
+    func openFiles() {
+        if palette != .files { togglePalette(.files) }
     }
 
     /// The keyboard back to what is open: the note's text, after ⌘K or search.

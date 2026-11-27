@@ -140,16 +140,15 @@ struct FormatShortcut {
             FormatShortcut(.strikethrough, "x", [.command, .shift]),
             FormatShortcut(.highlight, "h", [.command, .control]),
             FormatShortcut(.code, "e"),
-            FormatShortcut(.link, "l"),
+            FormatShortcut(.link, "l", [.command, .shift]),
         ],
         [
             FormatShortcut(.title, "t", [.command, .shift]),
             FormatShortcut(.heading, "h", [.command, .shift]),
             FormatShortcut(.subheading, "j", [.command, .shift]),
-            FormatShortcut(.body, "b", [.command, .shift]),
         ],
         [
-            FormatShortcut(.checklist, "l", [.command, .shift]),
+            FormatShortcut(.checklist, "l"),
             FormatShortcut(nil, "u", [.command, .shift]),
             FormatShortcut(.bulletedList, "7", [.command, .shift]),
             FormatShortcut(.numberedList, "9", [.command, .shift]),

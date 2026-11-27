@@ -137,30 +137,6 @@ final class SearchTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(fuzzyScore("sb", "Show Sidebar") ?? 0, FuzzyMatch.goodScore, "s-ide-b-ar")
     }
 
-    /// Return opens the first result, but not a name only a bit like what was typed: with only those, it makes the
-    /// note, as before there were Similar Names. ⌘K's first row and the Mac's highlighted suggestion are that too.
-    func testReturnMakesTheNoteWhenOnlySimilarNamesAreFound() async throws {
-        try write("Work/Summary workout launch 23.md", "Done.\n")
-        let index = try await makeIndex()
-        let query = try XCTUnwrap(SearchCorpus.Query("ryokan"))
-        var sections = SearchSection.sections(for: try search(index, "ryokan"), query: query)
-        XCTAssertEqual(sections.map(\.title), [SearchSection.similarNames, nil], "summa-ry-, w-o-r-k-out, l-a-u-n-ch")
-        XCTAssertEqual(SearchSection.firstToOpen(in: sections)?.result, .newNote("ryokan"))
-        XCTAssertEqual(SearchSection.highlightingWhatReturnOpens(sections).map(\.title), [nil, SearchSection.similarNames])
-        let commands = [PaletteCommand(id: "hidden", title: "Show Hidden Folders", symbol: "eye", section: "") {}]
-        XCTAssertNil(CommandPalette.defaultRow(in: CommandPalette.rows(for: "del", commands: commands, results: [
-            SearchSection(title: SearchSection.similarNames, items: [SearchItem(result: .file(library.appendingPathComponent("Idea.md")), title: "Idea")]),
-            SearchSection(title: nil, items: [SearchItem(result: .newNote("del"), title: "New Note “del”")]),
-        ]))?.section, "New Note, not a Similar Name or Similar Command")
-        XCTAssertNil(CommandPalette.defaultRow(in: CommandPalette.rows(for: "ryokan", commands: [], results: sections))?.section)
-
-        // With something that has what was typed, that comes first, as before.
-        try write("Travel/Getting to the ryokan.md", "By train.\n")
-        let again = try await makeIndex()
-        sections = SearchSection.sections(for: try search(again, "ryokan"), query: query)
-        XCTAssertEqual(SearchSection.firstToOpen(in: sections)?.title, "Getting to the ryokan")
-        XCTAssertEqual(SearchSection.highlightingWhatReturnOpens(sections).map(\.title), sections.map(\.title))
-    }
 
     func testLettersAreCountedWithoutSpaces() throws {
         XCTAssertEqual(try XCTUnwrap(SearchCorpus.Query("a b")).letterCount, 2)
@@ -233,25 +209,6 @@ final class SearchTests: XCTestCase {
         XCTAssertTrue(corpus.matchNames(query, files: 6, folders: 0, others: 3, loose: false).files.isEmpty, "not loose")
     }
 
-    /// ⌘K lists commands only a bit like what was typed last, after everything search found and before New Note; and
-    /// none for two letters, which are in order in most commands.
-    func testSimilarCommandsComeLast() {
-        let commands = ["Show Hidden Folders", "Delete", "New Note"].map { PaletteCommand(id: $0, title: $0, symbol: "circle", section: "") {} }
-        let note = URL(fileURLWithPath: "/Notes/Idea.md"), other = URL(fileURLWithPath: "/Notes/Garden list.md")
-        let results = [
-            SearchSection(title: "Files", items: [SearchItem(result: .file(note), title: "Idea")]),
-            SearchSection(title: "In Notes and PDFs", items: [SearchItem(result: .text(note, words: "del", page: nil), title: "Idea")]),
-            SearchSection(title: "Similar Names", items: [SearchItem(result: .file(other), title: "Garden list")]),
-            SearchSection(title: nil, items: [SearchItem(result: .newNote("del"), title: "New Note “del”")]),
-        ]
-        var sections: [String?] = []
-        for row in CommandPalette.rows(for: "del", commands: commands, results: results) where sections.last != row.section {
-            sections.append(row.section)
-        }
-        XCTAssertEqual(sections, ["Commands", "Files", "In Notes and PDFs", "Similar Names", "Similar Commands", nil],
-                       "Delete first, as it starts with what was typed; sh-o-w hi-d-d-e-n fo-l-ders last")
-        XCTAssertFalse(CommandPalette.rows(for: "oe", commands: commands, results: []).contains { $0.section == "Similar Commands" })
-    }
 
     /// A name that is exactly what was typed comes first wherever it is in the corpus, the last one included.
     func testTheLastNameMatchesWhole() throws {

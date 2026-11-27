@@ -87,7 +87,7 @@ extension Workspace {
                 list.append(PaletteCommand(id: "export-png", title: "Export as PNG Image…", symbol: "photo", section: section, keywords: ["picture"]) { [self] in
                     export(as: .png)
                 })
-                list.append(PaletteCommand(id: "print", title: "Print…", symbol: "printer", section: section, keys: ["⌘", "P"]) { [self] in
+                list.append(PaletteCommand(id: "print", title: "Print…", symbol: "printer", section: section, keys: []) { [self] in
                     printNote()
                 })
             } else {
@@ -103,7 +103,7 @@ extension Workspace {
             #else
             // As the ⋯ menu says it: there is no Trash here, and no ⌘⌫, which deletes text in a note.
             if isLoaded {
-                list.append(PaletteCommand(id: "print", title: "Print…", symbol: "printer", section: section, keys: ["⌘", "P"]) { [self] in
+                list.append(PaletteCommand(id: "print", title: "Print…", symbol: "printer", section: section, keys: []) { [self] in
                     NoteExporter.print(editor, title: currentTitle)
                 })
             }
@@ -116,10 +116,10 @@ extension Workspace {
         if note?.isLoaded == true {
             let format = "Format"
             let styles: [(FormatCommand, [String])] = [
-                (.title, ["⇧", "⌘", "T"]), (.heading, ["⇧", "⌘", "H"]), (.subheading, ["⇧", "⌘", "J"]), (.body, ["⇧", "⌘", "B"]),
-                (.checklist, ["⇧", "⌘", "L"]), (.bulletedList, ["⇧", "⌘", "7"]), (.numberedList, ["⇧", "⌘", "9"]), (.quote, ["⌘", "'"]),
-                (.bold, ["⌘", "B"]), (.italic, ["⌘", "I"]), (.strikethrough, ["⇧", "⌘", "X"]), (.highlight, ["⌃", "⌘", "H"]),
-                (.code, ["⌘", "E"]), (.link, ["⌘", "L"]),
+                (.title, ["⇧", "⌘", "T"]), (.heading, ["⇧", "⌘", "H"]), (.subheading, ["⇧", "⌘", "J"]), (.body, []),
+                (.checklist, ["⌘", "L"]), (.bulletedList, ["⇧", "⌘", "7"]), (.numberedList, ["⇧", "⌘", "9"]), (.quote, ["⌘", "'"]),
+                (.bold, []), (.italic, ["⌘", "I"]), (.strikethrough, ["⇧", "⌘", "X"]), (.highlight, ["⌃", "⌘", "H"]),
+                (.code, ["⌘", "E"]), (.link, ["⇧", "⌘", "L"]),
             ]
             for (command, keys) in styles {
                 list.append(PaletteCommand(id: "format-\(command.name)", title: command.name, symbol: command.symbol, section: format, keys: keys,
@@ -186,14 +186,20 @@ extension Workspace {
         #endif
         if hasColumns {
             list.append(PaletteCommand(id: "sidebar", title: isSidebarVisible ? "Hide Sidebar" : "Show Sidebar", symbol: "sidebar.left", section: view,
-                                       keys: ["⌃", "⌘", "S"]) { [self] in
+                                       keys: ["⌘", "B"]) { [self] in
                 withAnimation(Theme.spring) { isSidebarVisible.toggle() }
             })
             list.append(PaletteCommand(id: "outline", title: isOutlineVisible ? "Hide Outline" : "Show Outline", symbol: "sidebar.right", section: view,
-                                       keys: ["⌃", "⌘", "I"], keywords: ["inspector", "headings"]) { [self] in
+                                       keys: ["⇧", "⌘", "B"], keywords: ["inspector", "headings"]) { [self] in
                 withAnimation(Theme.spring) { isOutlineVisible.toggle() }
             })
         }
+        #if os(macOS)
+        list.append(PaletteCommand(id: "header", title: NotebookSettings.shared.showsHeader ? "Hide Header" : "Show Header",
+                                   symbol: "menubar.rectangle", section: view, keywords: ["toolbar", "title bar", "traffic lights", "toggle"]) {
+            NotebookSettings.shared.showsHeader.toggle()
+        })
+        #endif
         if hasHiddenFolders {
             list.append(PaletteCommand(id: "hidden", title: showsAllHiddenFolders ? "Hide Hidden Folders" : "Show Hidden Folders",
                                        symbol: showsAllHiddenFolders ? "eye.slash" : "eye", section: view, keys: ["⇧", "⌘", "."]) { [self] in

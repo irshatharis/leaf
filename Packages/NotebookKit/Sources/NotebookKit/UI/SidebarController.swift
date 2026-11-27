@@ -544,7 +544,7 @@ final class SidebarController: NSObject, NSOutlineViewDataSource, NSOutlineViewD
         let cell = outlineView.makeView(withIdentifier: SidebarFileCell.identifier, owner: nil) as? SidebarFileCell ?? SidebarFileCell()
         cell.label.delegate = self
         if (item as? SidebarEntry)?.isSearch == true {
-            cell.configureSearch { [weak self] in self?.workspace.openSearch() }
+            cell.configureSearch { [weak self] in self?.workspace.openFiles() }
             cell.setButtons(more: nil, add: nil)
             return cell
         }
@@ -978,7 +978,7 @@ final class SidebarOutlineView: NSOutlineView {
         }
         // Search opens ⌘K and is never selected: what is open stays selected below it.
         if row >= 0, let entry = item(atRow: row) as? SidebarEntry, entry.isSearch {
-            controller?.workspace.openSearch()
+            controller?.workspace.openFiles()
             return
         }
         // So does Open Folder, which asks for a folder to show.
@@ -1560,7 +1560,7 @@ final class SidebarFileCell: NSTableCellView {
         self.press = press
         count.font = .systemFont(ofSize: 12)
         countColor = .tertiaryLabelColor
-        count.stringValue = "⌘K"
+        count.stringValue = "⌘P"
         countEnd.constant = Self.searchShortcutInset
         shownCount = true
         count.isHidden = false

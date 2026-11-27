@@ -33,6 +33,10 @@ public struct RootView: View {
 struct MainView: View {
     @Bindable var workspace: Workspace
     @Environment(\.openSettings) private var openSettings
+    @State private var settings = NotebookSettings.shared
+    @State private var headerPeek = false
+
+    private var headerVisible: Bool { settings.showsHeader || headerPeek }
 
     var body: some View {
         NavigationSplitView(columnVisibility: $workspace.columnVisibility) {
@@ -48,6 +52,9 @@ struct MainView: View {
                 .toolbar(removing: .title)
         }
         .navigationTitle(workspace.currentTitle)
+        .toolbarVisibility(headerVisible ? .visible : .hidden, for: .windowToolbar)
+        .background(WindowChrome(showsHeader: headerVisible, peek: $headerPeek))
+        .transaction { $0.animation = nil }
         .overlay { PaletteHost(workspace: workspace, actions: paletteActions) }
         .alert(conflictTitle, isPresented: Binding(get: { workspace.note?.conflict != nil }, set: { _ in }), presenting: workspace.note?.conflict) { _ in
             Button("Keep Both") { workspace.resolveConflict(.keepBoth) }
@@ -71,6 +78,47 @@ struct MainView: View {
 
     private var conflictTitle: String {
         "“\(workspace.currentTitle)” was changed somewhere else."
+    }
+}
+
+/// The window's title bar without a title, its traffic lights shown with the header. With the header hidden, moving
+/// the pointer to the window's top edge shows it until the pointer leaves the header.
+private struct WindowChrome: NSViewRepresentable {
+    let showsHeader: Bool
+    @Binding var peek: Bool
+
+    final class Coordinator {
+        var monitor: Any?
+        deinit { if let monitor { NSEvent.removeMonitor(monitor) } }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> NSView { NSView() }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        DispatchQueue.main.async {
+            guard let window = view.window else { return }
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
+            window.styleMask.insert(.fullSizeContentView)
+            for kind in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+                window.standardWindowButton(kind)?.isHidden = !showsHeader
+            }
+            guard context.coordinator.monitor == nil else { return }
+            window.acceptsMouseMovedEvents = true
+            let peek = $peek
+            context.coordinator.monitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak window] event in
+                guard let window, event.window === window, let content = window.contentView else { return event }
+                let fromTop = content.bounds.height - event.locationInWindow.y
+                if fromTop <= 4, !peek.wrappedValue {
+                    peek.wrappedValue = true
+                } else if fromTop > 60, peek.wrappedValue {
+                    peek.wrappedValue = false
+                }
+                return event
+            }
+        }
     }
 }
 
@@ -129,7 +177,7 @@ struct DocumentToolbar: ToolbarContent {
                 FormatMenu(workspace: workspace)
                     .disabled(!note.isLoaded)
                 Button { workspace.editor.beginEditing(then: .checklist) } label: { Label("Checklist", systemImage: "checklist") }
-                    .help("Checklist (⇧⌘L)")
+                    .help("Checklist (⌘L)")
                     .disabled(!note.isLoaded)
                 TableButton(editor: workspace.editor)
                     .disabled(!note.isLoaded)
@@ -179,7 +227,7 @@ struct DocumentToolbar: ToolbarContent {
                 } label: {
                     Label(workspace.isOutlineVisible ? "Hide Outline" : "Show Outline", systemImage: "sidebar.right")
                 }
-                .help(workspace.isOutlineVisible ? "Hide outline (⌃⌘I)" : "Show outline (⌃⌘I)")
+                .help(workspace.isOutlineVisible ? "Hide outline (⇧⌘B)" : "Show outline (⇧⌘B)")
             }
         }
     }
@@ -224,7 +272,7 @@ struct MoreMenu: View {
                     MenuEntry("PDF…", "doc.richtext", keys: "⌥⌘E") { workspace.export(as: .pdf) }
                     MenuEntry("PNG Image…", "photo") { workspace.export(as: .png) }
                 }
-                MenuEntry("Print…", "printer", keys: "⌘P", enabled: note.isLoaded) { workspace.printNote() }
+                MenuEntry("Print…", "printer", keys: nil, enabled: note.isLoaded) { workspace.printNote() }
             }
             MenuEntry.divider
             MenuEntry("Move to Trash", "trash", destructive: true) { workspace.trashAfterAsking(url) }

@@ -60,7 +60,6 @@ public struct NotebookScene: Scene {
             }
             CommandGroup(replacing: .printItem) {
                 Button { workspace.printNote() } label: { Label("Print…", systemImage: "printer") }
-                    .keyboardShortcut("p", modifiers: .command)
                     .disabled(!workspace.hasVisibleNote)
             }
             CommandGroup(replacing: .newItem) {
@@ -119,14 +118,14 @@ public struct NotebookScene: Scene {
                 } label: {
                     Label(workspace.isSidebarVisible ? "Hide Sidebar" : "Show Sidebar", systemImage: "sidebar.left")
                 }
-                .keyboardShortcut("s", modifiers: [.command, .control])
+                .keyboardShortcut("b", modifiers: .command)
                 .disabled(workspace.locations.isEmpty)
                 Button {
                     workspace.inMainWindow { withAnimation(Theme.spring) { workspace.isOutlineVisible.toggle() } }
                 } label: {
                     Label(workspace.isOutlineVisible ? "Hide Outline" : "Show Outline", systemImage: "sidebar.right")
                 }
-                .keyboardShortcut("i", modifiers: [.command, .control])
+                .keyboardShortcut("b", modifiers: [.command, .shift])
                 .disabled(workspace.locations.isEmpty || workspace.showsTodos)
                 Divider()
                 SortByPicker(folder: workspace.folderInView)
@@ -153,8 +152,11 @@ public struct NotebookScene: Scene {
                 // the top of the sidebar is.
                 Button { workspace.inMainWindow { workspace.openSearch() } } label: { Label("Search…", systemImage: "magnifyingglass") }
                     .keyboardShortcut("f", modifiers: [.command, .option])
-                Button { workspace.inMainWindow { workspace.togglePalette() } } label: { Label("Command Palette…", systemImage: "command") }
+                Button { workspace.inMainWindow { workspace.togglePalette(.commands) } } label: { Label("Command Palette…", systemImage: "command") }
                     .keyboardShortcut("k", modifiers: .command)
+                    .disabled(workspace.locations.isEmpty)
+                Button { workspace.inMainWindow { workspace.togglePalette(.files) } } label: { Label("Go to File…", systemImage: "doc.text.magnifyingglass") }
+                    .keyboardShortcut("p", modifiers: .command)
                     .disabled(workspace.locations.isEmpty)
                 if settings.showsTodos {
                     Button { workspace.inMainWindow { workspace.showTodos() } } label: { Label("To-dos", systemImage: "checklist") }
@@ -170,7 +172,7 @@ public struct NotebookScene: Scene {
                     .disabled(!workspace.canGoForward)
             }
             CommandMenu("Format") {
-                formatButton(.bold, #selector(MarkdownTextView.toggleBoldface(_:)), "b", .command)
+                formatButton(.bold, #selector(MarkdownTextView.toggleBoldface(_:)), nil, [])
                 formatButton(.italic, #selector(MarkdownTextView.toggleItalics(_:)), "i", .command)
                 formatButton(.strikethrough, #selector(MarkdownTextView.toggleStrikethrough(_:)), "x", [.command, .shift])
                 // In a PDF too: the text selected on its pages.
@@ -178,14 +180,14 @@ public struct NotebookScene: Scene {
                     .keyboardShortcut("h", modifiers: [.command, .control])
                     .disabled(!workspace.canHighlight)
                 formatButton(.code, #selector(MarkdownTextView.toggleInlineCode(_:)), "e", .command)
-                formatButton(.link, #selector(MarkdownTextView.addLink(_:)), "l", .command)
+                formatButton(.link, #selector(MarkdownTextView.addLink(_:)), "l", [.command, .shift])
                 Divider()
                 formatButton(.title, #selector(MarkdownTextView.makeTitle(_:)), "t", [.command, .shift])
                 formatButton(.heading, #selector(MarkdownTextView.makeHeading(_:)), "h", [.command, .shift])
                 formatButton(.subheading, #selector(MarkdownTextView.makeSubheading(_:)), "j", [.command, .shift])
-                formatButton(.body, #selector(MarkdownTextView.makeBody(_:)), "b", [.command, .shift])
+                formatButton(.body, #selector(MarkdownTextView.makeBody(_:)), nil, [])
                 Divider()
-                formatButton(.checklist, #selector(MarkdownTextView.makeChecklist(_:)), "l", [.command, .shift])
+                formatButton(.checklist, #selector(MarkdownTextView.makeChecklist(_:)), "l", .command)
                 Button { NSApp.sendAction(#selector(MarkdownTextView.markChecked(_:)), to: nil, from: nil) } label: {
                     Label("Mark as Checked", systemImage: "checkmark.circle")
                 }
@@ -242,9 +244,9 @@ public struct NotebookScene: Scene {
         if let key { button.keyboardShortcut(key, modifiers: modifiers) } else { button }
     }
 
-    private func formatButton(_ command: FormatCommand, _ action: Selector, _ key: Character, _ modifiers: EventModifiers, name: String? = nil) -> some View {
+    private func formatButton(_ command: FormatCommand, _ action: Selector, _ key: Character?, _ modifiers: EventModifiers, name: String? = nil) -> some View {
         Button { NSApp.sendAction(action, to: nil, from: nil) } label: { Label(name ?? command.name, systemImage: command.symbol) }
-            .keyboardShortcut(KeyEquivalent(key), modifiers: modifiers)
+            .keyboardShortcut(key.map { KeyboardShortcut(KeyEquivalent($0), modifiers: modifiers) })
             .disabled(!workspace.hasNoteInFront)
     }
 }
