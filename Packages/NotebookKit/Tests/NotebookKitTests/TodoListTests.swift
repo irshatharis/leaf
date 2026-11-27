@@ -502,7 +502,7 @@ final class TodoListTests: XCTestCase {
         XCTAssertEqual(names(.tomorrow), ["tomorrow"])
         XCTAssertEqual(names(.week), ["week"])
         XCTAssertEqual(names(.later), ["later"])
-        XCTAssertEqual(names(.someday), ["someday", "pharmacy"])
+        XCTAssertEqual(names(.someday), ["pharmacy", "someday"], "undated to-dos follow the names of their notes")
         XCTAssertNil(TodoSection.day(for: .overdue, now: now, calendar: calendar), "nothing can be dragged into Overdue")
         XCTAssertEqual(TodoSection.day(for: .tomorrow, now: now, calendar: calendar), calendar.date(from: DateComponents(year: 2026, month: 10, day: 24)))
         XCTAssertEqual(TodoSection.day(for: .someday, now: now, calendar: calendar), .some(nil))

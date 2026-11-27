@@ -171,7 +171,7 @@ final class NewFolderTests: XCTestCase {
     }
 
     /// Search, first in the sidebar, opens ⌘K and is never selected: the row of what is open stays selected.
-    func testSearchAtTheTopOpensThePalette() async throws {
+    func testSearchAtTheTopOpensGoToFile() async throws {
         let (workspace, sidebar) = try await makeSidebar()
         let outline = sidebar.outline
         let entry = try XCTUnwrap(outline.item(atRow: 0) as? SidebarEntry)
@@ -186,16 +186,16 @@ final class NewFolderTests: XCTestCase {
         let event = NSEvent.mouseEvent(with: .leftMouseDown, location: outline.convert(point, to: nil), modifierFlags: [], timestamp: 0,
                                        windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
         outline.mouseDown(with: event)
-        XCTAssertEqual(workspace.palette, .search)
+        XCTAssertEqual(workspace.palette, .files)
         XCTAssertEqual(outline.selectedRow, papers, "Papers stays selected")
         XCTAssertEqual(outline.delegate?.outlineView?(outline, shouldSelectItem: entry), false)
 
         // A second click leaves it open, as does VoiceOver's press.
         outline.mouseDown(with: event)
-        XCTAssertEqual(workspace.palette, .search)
+        XCTAssertEqual(workspace.palette, .files)
         workspace.palette = nil
         XCTAssertTrue(cell.accessibilityPerformPress())
-        XCTAssertEqual(workspace.palette, .search)
+        XCTAssertEqual(workspace.palette, .files)
     }
 
     /// New Folder is in the header's •••, its right-click menu.
