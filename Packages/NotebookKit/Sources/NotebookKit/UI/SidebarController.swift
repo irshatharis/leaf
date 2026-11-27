@@ -684,8 +684,8 @@ final class SidebarController: NSObject, NSOutlineViewDataSource, NSOutlineViewD
         openOnItsOwn(row: outline.clickedRow)
     }
 
-    /// A double-click opens a file on its own, as in the Finder: a note in a window of its own, anything else in the
-    /// app the Mac has for it. A folder already opens and closes with each click.
+    /// A double-click opens a file in the app the Mac has for it, as in the Finder. A note is open here already, and a
+    /// folder opens and closes with each click.
     func openOnItsOwn(row: Int) {
         guard let url = url(at: row) else { return }
         guard !((outline.item(atRow: row) as? FileNode)?.isFolder ?? FileNode.isFolder(url)) else { return }
@@ -821,9 +821,7 @@ final class SidebarController: NSObject, NSOutlineViewDataSource, NSOutlineViewD
         if isFolder, NotebookSettings.shared.showsTodos {
             add(menu, "Show To-dos", "checklist") { [weak self] in self?.workspace.showTodos(in: url) }
         }
-        if !isFolder, FileKind(url: url, isDirectory: false) == .note {
-            add(menu, "Open in New Window", "macwindow.badge.plus") { [weak self] in self?.workspace.openOnItsOwn(url) }
-        } else if !isFolder {
+        if !isFolder, FileKind(url: url, isDirectory: false) != .note {
             if let app = workspace.appName(opening: url) {
                 add(menu, "Open in \(app)", "arrow.up.forward.app") { [weak self] in self?.workspace.openOnItsOwn(url) }
             }

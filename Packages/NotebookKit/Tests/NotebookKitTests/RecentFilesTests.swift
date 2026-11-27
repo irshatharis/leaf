@@ -68,6 +68,26 @@ final class RecentFilesTests: XCTestCase {
         XCTAssertTrue(workspace.recents.contains(outside.path), "kept, for when the folder is added again")
     }
 
+    #if os(macOS)
+    /// Notes opened from the Finder or the leaf command, also outside every location, are recent: the newest twenty,
+    /// and a note outside the locations that drops off them is let go.
+    func testTheTwentyNewestFilesOpenedFromOutsideAreRecent() async throws {
+        let elsewhere = FileManager.default.temporaryDirectory.appendingPathComponent("notebook-elsewhere-\(UUID().uuidString)").standardizedFileURL
+        try FileManager.default.createDirectory(at: elsewhere, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: elsewhere) }
+        let notes = (1...24).map { elsewhere.appendingPathComponent("Note \($0).md") }
+        for note in notes { try "\(note.lastPathComponent)\n".write(to: note, atomically: true, encoding: .utf8) }
+        let workspace = try await readWorkspace()
+        workspace.openFromOutside([groceries])
+        for note in notes { workspace.openFromOutside([note]) }
+        XCTAssertEqual(workspace.currentURL, notes.last)
+        let recent = workspace.recentURLs(includingOpen: true)
+        XCTAssertEqual(recent.count, 20)
+        XCTAssertEqual(recent, notes.suffix(20).reversed())
+        XCTAssertEqual(Set(workspace.keptFiles.map(\.url)), Set(notes.suffix(20)))
+    }
+    #endif
+
     private func rename(_ url: URL, to new: URL, in workspace: Workspace) async throws {
         _ = await workspace.rename(url, to: new.deletingPathExtension().lastPathComponent).value
         let end = Date().addingTimeInterval(5)

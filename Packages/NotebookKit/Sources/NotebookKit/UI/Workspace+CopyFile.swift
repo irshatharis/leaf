@@ -20,10 +20,6 @@ extension Workspace {
         guard FileManager.default.fileExists(atPath: url.path) else { return beep() }
         #if os(macOS)
         Self.writeFile(url, to: appPasteboard)
-        // A note's own window is AppKit's, which shows the capsule itself.
-        if keyFileNote != nil, let window = keyFileWindow?.window {
-            return CopiedCapsule.show(Self.shownName(url), in: window)
-        }
         #else
         Self.writeFile(url, to: .general)
         #endif
@@ -32,7 +28,7 @@ extension Workspace {
 
     #if os(macOS)
     /// The file Copy File (⇧⌘C) takes: the one selected in the sidebar while it has the keyboard, else the file of the
-    /// window you are working in, a note's own window or this one.
+    /// main window.
     var fileToCopy: URL? {
         if isMainWindowInFront, let sidebar, sidebar.outline.window?.firstResponder === sidebar.outline, let url = sidebar.selectedURL {
             return url

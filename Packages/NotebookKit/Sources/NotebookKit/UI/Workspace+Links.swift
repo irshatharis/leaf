@@ -42,9 +42,18 @@ extension Workspace {
         var texts: [String: String] = [:]
         /// The folders to read instead, while the index has nothing yet (the first time Notebook opens them).
         var reading: [URL]?
+        /// The folders in them too: not for the folder of a note outside every location, which can be anything.
+        var readsDeep = true
 
         /// What links mean before the move: what the index knew, as Notebook changed it since.
         var before: LinkTargets { targets.settled(recent).withTexts(texts) }
+    }
+
+    /// What links mean now, for a move of `url`: for a note outside every location, which search doesn't read the
+    /// notes next to, those notes as they are.
+    func linkSnapshot(moving url: URL) -> LinkSnapshot {
+        guard location(containing: url) == nil else { return linkSnapshot() }
+        return LinkSnapshot(targets: .empty, reading: [url.deletingLastPathComponent()], readsDeep: false)
     }
 
     func linkSnapshot() -> LinkSnapshot {
@@ -80,7 +89,7 @@ extension Workspace {
             let update = await Task.detached(priority: .utility) { [snapshot] in
                 // Without the index, the files as they are now, with the move taken back.
                 guard let folders = snapshot.reading else { return LinkUpdate(before: snapshot.before, moves: [move]) }
-                return LinkUpdate(before: LinkTargets.reading(folders, deep: true).moving([move.reversed]), moves: [move])
+                return LinkUpdate(before: LinkTargets.reading(folders, deep: snapshot.readsDeep).moving([move.reversed]), moves: [move])
             }.value
             await rewriteLinks(update, following: following)
         }
@@ -173,15 +182,10 @@ extension Workspace {
         }
     }
 
-    /// The notes shown in an editor with their text in, saved yet or not: this window's, and on the Mac the windows
-    /// of their own.
+    /// The note shown in the editor with its text in, saved yet or not.
     func notesShown() -> [(url: URL, text: String)] {
-        var shown: [(url: URL, text: String)] = []
-        if let note, note.isLoaded { shown.append((note.url, editor.text)) }
-        #if os(macOS)
-        shown += FileWindows.shared.notesShown()
-        #endif
-        return shown
+        guard let note, note.isLoaded else { return [] }
+        return [(note.url, editor.text)]
     }
 
     /// Changes the links in the note an editor shows as an edit of its text, back to what they said when `undoing`,

@@ -49,7 +49,7 @@ final class LocationTests: XCTestCase {
         UserDefaults.standard.set(library.path, forKey: "NotebookLibrary")
         let workspace = Workspace()
         workspace.start()
-        workspace.openFolder(drive)
+        workspace.openFromOutside([drive])
         if settled { try await settle(workspace) }
         return workspace
     }
@@ -181,7 +181,7 @@ final class LocationTests: XCTestCase {
         let workspace = try await makeWorkspace(settled: false)
         let elsewhere = base.appendingPathComponent("Elsewhere")
         try make(elsewhere)
-        workspace.openFolder(elsewhere)
+        workspace.openFromOutside([elsewhere])
         var waited = false
         workspace.whenSurveyed { waited = true }
         try await Task.sleep(for: .milliseconds(400))
@@ -197,14 +197,14 @@ final class LocationTests: XCTestCase {
         XCTAssertEqual(workspace.locations.map(\.name), ["Library", "iCloud Drive"])
 
         let trip = desktop.appendingPathComponent("Trip")
-        workspace.openFolder(trip)
-        workspace.openFolder(drive)
+        workspace.openFromOutside([trip])
+        workspace.openFromOutside([drive])
         XCTAssertEqual(workspace.locations.count, 2, "already in iCloud Drive")
         XCTAssertEqual(workspace.selectedFolder?.path, drive.path)
 
         let elsewhere = base.appendingPathComponent("Elsewhere")
         try make(elsewhere)
-        workspace.openFolder(elsewhere)
+        workspace.openFromOutside([elsewhere])
         XCTAssertEqual(workspace.locations.map(\.name), ["Library", "iCloud Drive", "Elsewhere"])
     }
 

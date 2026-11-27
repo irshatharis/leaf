@@ -87,18 +87,11 @@ enum DebugRemote {
         }
     }
 
-    /// Commands go to the main window, or after `usewindow file` to the last file window opened.
-    private static var usesFileWindow = false
-
     private static var window: NSWindow? {
-        if usesFileWindow { return FileWindows.shared.windows.last }
-        return NSApp.windows.first { $0.isVisible && $0.frame.width > 500 && !($0 is NSPanel) && !($0.windowController is FileWindowController) }
+        NSApp.windows.first { $0.isVisible && $0.frame.width > 500 && !($0 is NSPanel) }
     }
 
-    private static var editor: EditorController? {
-        if usesFileWindow { return (FileWindows.shared.windows.last?.windowController as? FileWindowController)?.editor }
-        return workspace?.editor
-    }
+    private static var editor: EditorController? { workspace?.editor }
 
     private static func run(_ line: String) {
         let parts = line.split(separator: " ", maxSplits: 1).map(String.init)
@@ -476,19 +469,11 @@ enum DebugRemote {
             if let menu = NSApp.mainMenu?.items.first?.submenu, let index = menu.items.firstIndex(where: { $0.keyEquivalent == "," }) {
                 menu.performActionForItem(at: index)
             }
-        case "usewindow":
-            usesFileWindow = argument == "file"
         case "windows":
-            // windows: the windows open, a note's own windows with their file and how many tabs they are in.
+            // windows: the windows open.
             for window in NSApp.windows where window.isVisible && !(window is NSPanel) {
-                let file = (window.windowController as? FileWindowController).map { " file=\($0.url.path) tabs=\(window.tabbedWindows?.count ?? 1)" } ?? ""
-                log("window \"\(window.title)\" id=\(window.identifier?.rawValue ?? "none")\(file)")
+                log("window \"\(window.title)\" id=\(window.identifier?.rawValue ?? "none")")
             }
-        case "openfile":
-            FileWindows.shared.open(URL(fileURLWithPath: argument))
-        case "closefile":
-            // closefile: closes the last of the notes' own windows, as its close button does.
-            FileWindows.shared.windows.last?.performClose(nil)
         case "quit":
             // quit: as ⌘Q, after this command: quitting can wait for notes (`.terminateLater`), and the remote would wait
             // inside its own timer, which can't fire again meanwhile. Not from the main queue either, which stops
@@ -519,7 +504,7 @@ enum DebugRemote {
             // front: which window is in front and what the menus act on there.
             if let workspace {
                 let key = NSApp.keyWindow
-                log("front key=\"\(key?.title ?? "none")\" main=\"\(NSApp.mainWindow?.title ?? "none")\" mainOpen=\(workspace.isMainWindowOpen) other=\(workspace.isOtherWindowInFront) fileNote=\(workspace.keyFileNote?.url.lastPathComponent ?? "none") file=\(workspace.fileInFront?.lastPathComponent ?? "none") hasNote=\(workspace.hasNoteInFront) visibleNote=\(workspace.hasVisibleNote) active=\(workspace.activeEditor()?.title ?? "none") fileUndo=\(workspace.fileUndoManager === window?.undoManager ? "window" : "other")")
+                log("front key=\"\(key?.title ?? "none")\" main=\"\(NSApp.mainWindow?.title ?? "none")\" mainOpen=\(workspace.isMainWindowOpen) other=\(workspace.isOtherWindowInFront) file=\(workspace.fileInFront?.lastPathComponent ?? "none") hasNote=\(workspace.hasNoteInFront) visibleNote=\(workspace.hasVisibleNote) active=\(workspace.activeEditor()?.title ?? "none") fileUndo=\(workspace.fileUndoManager === window?.undoManager ? "window" : "other")")
             }
         case "replaceall":
             // replaceall <find>|<replace>: types both in the note's find bar, as you would, and clicks All.
@@ -543,7 +528,7 @@ enum DebugRemote {
             log("replaceall: done, fields \(found.map(\.stringValue))")
         case "becomemain":
             // becomemain <title>: that window becomes the one you work in, as a click on it makes it (Settings, say).
-            if let found = NSApp.windows.first(where: { $0.isVisible && $0.title == argument }) { FileWindows.becameMain(found) } else { log("becomemain: no \(argument)") }
+            if let found = NSApp.windows.first(where: { $0.isVisible && $0.title == argument }) { workspace?.windowBecameMain(found) } else { log("becomemain: no \(argument)") }
         case "resignactive":
             // resignactive: what switching to another app tells Notebook (it never is the active app here).
             NotificationCenter.default.post(name: NSApplication.willResignActiveNotification, object: NSApp)
@@ -628,7 +613,7 @@ enum DebugRemote {
             }
         case "openurls":
             // openurls <path>: what File › Open and the Dock icon do with a file or folder.
-            FileWindows.shared.open([URL(fileURLWithPath: argument)])
+            workspace?.openFromOutside([URL(fileURLWithPath: argument)])
         case "rows":
             // rows: the sidebar as shown, indented, with the selected row marked and the visible rows' range.
             if let outline = workspace?.sidebar?.outline {
@@ -734,7 +719,7 @@ enum DebugRemote {
             // exportto <pdf|png> <path>: writes the open note without asking where.
             let bits = argument.split(separator: " ", maxSplits: 1).map(String.init)
             if let editor, bits.count == 2 {
-                let title = usesFileWindow ? (window?.title ?? "") : (workspace?.currentTitle ?? "")
+                let title = workspace?.currentTitle ?? ""
                 Task { @MainActor in
                     let data = await NoteExporter.data(for: editor, title: title, as: bits[0] == "png" ? .png : .pdf)
                     try? data?.write(to: URL(fileURLWithPath: bits[1]))

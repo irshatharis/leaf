@@ -69,7 +69,7 @@ public struct NotebookScene: Scene {
                 Button { workspace.inMainWindow { workspace.newFolder() } } label: { Label("New Folder", systemImage: "folder.badge.plus") }
                     .keyboardShortcut("n", modifiers: [.command, .shift])
                     .disabled(workspace.locations.isEmpty)
-                Button { FileWindows.shared.choose() } label: { Label("Open…", systemImage: "arrow.up.forward.square") }
+                Button { workspace.chooseFiles() } label: { Label("Open…", systemImage: "arrow.up.forward.square") }
                     .keyboardShortcut("o", modifiers: .command)
                 // Shows another folder in the sidebar, next to Open… as in other apps that open folders.
                 Button { workspace.chooseLocation(iCloud: false) } label: { Label("Open Folder…", systemImage: "plus.rectangle.on.folder") }
@@ -87,7 +87,7 @@ public struct NotebookScene: Scene {
                     Label("Open Recent", systemImage: "clock")
                 }
                 Divider()
-                // The file of the window you are working in, a note's own window or this one, as in Notes.
+                // The file of the main window, as in Notes.
                 // Dimmed with Settings in front or the main window closed: no file to act on.
                 let file = workspace.fileInFront
                 MoveToMenu(workspace: workspace, url: file)
@@ -216,7 +216,7 @@ public struct NotebookScene: Scene {
                 Button { workspace.toggleDrawing() } label: {
                     Label(workspace.isDrawingInFront ? "Stop Drawing" : "Drawing", systemImage: "pencil.tip.crop.circle")
                 }
-                // The main window's: a note's own window has no pens to draw with. A PDF is drawn on too.
+                // A PDF is drawn on too.
                 .disabled(!workspace.isMainWindowInFront || (workspace.note == nil && workspace.currentPDF == nil))
                 Divider()
                 formatButton(.indent, #selector(MarkdownTextView.indentLines(_:)), "]", [.command, .option], name: "Increase Indent")

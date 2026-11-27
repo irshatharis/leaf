@@ -1,18 +1,16 @@
 #if os(macOS)
 import AppKit
 
-/// What the File and Edit menus do with the note in the window you are working in, a note's own window or this one,
-/// as Notes' menus do: find in it, check its spelling, attach files to it, duplicate, rename or trash it.
+/// What the File and Edit menus do with the note in the main window, as Notes' menus do: find in it, check its spelling, attach files to it, duplicate, rename or trash it.
 extension Workspace {
-    /// The file of the window you are working in: none with Settings in front, or the main window closed.
+    /// The file of the main window: none with Settings in front, or the main window closed.
     var fileInFront: URL? {
-        if let keyFileNote { return keyFileNote.url }
-        return isMainWindowInFront && !showsTodos ? currentURL : nil
+        isMainWindowInFront && !showsTodos ? currentURL : nil
     }
 
     /// A note to type in is in the window you are working in: what Format, Find and Attach File need.
     var hasNoteInFront: Bool {
-        (keyFileNote ?? (isMainWindowInFront ? note : nil))?.isLoaded == true
+        isMainWindowInFront && note?.isLoaded == true
     }
 
     /// Edit › Find, in the note's find bar, as in TextEdit: wherever the keyboard is, it finds in the note in front.

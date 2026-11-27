@@ -91,39 +91,22 @@ final class WindowInFrontTests: XCTestCase {
         XCTAssertEqual(main.undoManager?.undoMenuItemTitle, "Undo Move to Trash", "moved once")
     }
 
-    /// ⌘N in a note's own window makes the note in the main window, which comes to the front: what it does is kept for
-    /// Undo there, where ⌘Z in the main window finds it, not in the note's window it came from.
-    func testWhatAMainWindowCommandDoesIsUndoneInTheMainWindow() async throws {
-        let (workspace, manager) = try await makeWindow()
-        let controller = FileWindowController(url: draft)
-        workspace.keyFileWindow = controller
-        workspace.keyFileNote = controller.noteDocument
-        XCTAssertTrue(workspace.fileUndoManager === controller.window?.undoManager, "the note's window is in front")
-        var kept: FileChange?
-        workspace.inMainWindow { kept = workspace.keepForUndo(FileChange(.make, "New Note")) }
-        XCTAssertNil(workspace.keyFileNote, "the main window is the one you work in now")
-        XCTAssertTrue(kept?.manager === manager)
-        XCTAssertEqual(manager.undoMenuItemTitle, "Undo New Note")
-        XCTAssertEqual(controller.window?.undoManager?.canUndo, false)
-        if let kept { workspace.dropFromUndo(kept) }
-        controller.close()
-    }
-
     /// Settings in front: no note for the menus to act on, until a note's window or the main window is in front again.
     func testSettingsInFrontLeavesNoNoteToActOn() async throws {
-        _ = try await makeWindow()
-        _ = FileWindows.shared
-        let controller = FileWindowController(url: draft)
-        let noteWindow = try XCTUnwrap(controller.window)
-        FileWindows.becameMain(noteWindow)
-        XCTAssertTrue(Workspace.shared.keyFileWindow === controller)
+        let (workspace, _) = try await makeWindow()
+        workspace.open(draft)
+        try await until("open") { workspace.note?.isLoaded == true }
+        let main = try XCTUnwrap(window)
+        main.identifier = NSUserInterfaceItemIdentifier("main-AppWindow-1")
+        workspace.windowBecameMain(main)
+        XCTAssertTrue(workspace.hasNoteInFront)
         let settings = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 300, height: 200), styleMask: [.titled], backing: .buffered, defer: false)
-        FileWindows.becameMain(settings)
-        XCTAssertNil(Workspace.shared.keyFileNote)
-        XCTAssertTrue(Workspace.shared.isOtherWindowInFront)
-        FileWindows.becameMain(noteWindow)
-        XCTAssertFalse(Workspace.shared.isOtherWindowInFront)
-        noteWindow.close()
-        XCTAssertNil(Workspace.shared.keyFileWindow, "closed")
+        workspace.windowBecameMain(settings)
+        XCTAssertTrue(workspace.isOtherWindowInFront)
+        XCTAssertFalse(workspace.hasNoteInFront)
+        XCTAssertNil(workspace.fileInFront)
+        workspace.windowBecameMain(main)
+        XCTAssertFalse(workspace.isOtherWindowInFront)
+        XCTAssertEqual(workspace.fileInFront, draft)
     }
 }

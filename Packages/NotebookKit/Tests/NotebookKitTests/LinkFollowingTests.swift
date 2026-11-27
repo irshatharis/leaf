@@ -15,7 +15,7 @@ final class LinkFollowingTests: XCTestCase {
     private var plan: URL { papers.appendingPathComponent("Plan.md") }
     private var index: URL { library.appendingPathComponent("Index.md") }
     private var window: NSWindow?
-    private var fileWindows: [NSWindow] = []
+    private var sidebar: SidebarController?
 
     private let draftText = "# Draft\n\n![Chart](.assets/chart.png)\n\nSee [[Plan]].\n"
     private let indexText = "[[Papers/Plan|the plan]] and [[Draft]]\n"
@@ -43,7 +43,6 @@ final class LinkFollowingTests: XCTestCase {
         }
         if let sheet = window?.attachedSheet { window?.endSheet(sheet) }
         window?.close()
-        for window in fileWindows { window.close() }
         try? FileManager.default.removeItem(at: library)
         try? FileManager.default.removeItem(at: outside)
     }
@@ -52,6 +51,7 @@ final class LinkFollowingTests: XCTestCase {
     private func makeWindow() async throws -> (Workspace, UndoManager) {
         let workspace = Workspace()
         let sidebar = SidebarController(workspace: workspace)
+        self.sidebar = sidebar
         workspace.start()
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 600), styleMask: [.titled], backing: .buffered, defer: false)
         self.window = window
@@ -366,20 +366,24 @@ final class LinkFollowingTests: XCTestCase {
         XCTAssertEqual(text(index), indexText)
     }
 
-    /// A note from outside the locations, renamed in its own window: the links to it in the notes next to it follow.
-    func testANoteFromOutsideRenamedInItsWindow() async throws {
+    /// A note from outside the locations, opened and renamed in the main window: the links to it in the notes next to
+    /// it follow, and it is selected nowhere in the sidebar.
+    func testANoteFromOutsideRenamedInTheMainWindow() async throws {
+        let (workspace, manager) = try await makeWindow()
         let note = outside.appendingPathComponent("Draft.md")
         try "# Draft\n\n[[Other]]\n".write(to: note, atomically: true, encoding: .utf8)
         try "See [[Draft]] and [[Draft#Top|the top]].\n".write(to: outside.appendingPathComponent("Other.md"), atomically: true, encoding: .utf8)
         try "[[draft.md]]\n".write(to: outside.appendingPathComponent("Third.md"), atomically: true, encoding: .utf8)
-        FileWindows.shared.open(note)
-        let controller = try XCTUnwrap(FileWindows.shared.windows.compactMap { $0.windowController as? FileWindowController }.first { FileNode.samePath($0.url, note) })
-        fileWindows.append(try XCTUnwrap(controller.window))
-        try await until("open") { controller.isLoaded }
-        controller.editor(controller.editor, commitTitle: "Plan")
+        workspace.open(plan)
+        try await until("its row selected") { (self.sidebar?.outline.selectedRow ?? -1) >= 0 }
+        workspace.openFromOutside([note])
+        try await until("open") { workspace.note?.isLoaded == true && workspace.currentURL == note }
+        XCTAssertEqual(sidebar?.outline.selectedRow, -1, "no row for it")
+        XCTAssertEqual(workspace.recentURLs.first, plan)
+        workspace.editor(workspace.editor, commitTitle: "Plan")
         try await until("renamed") { self.exists(self.outside.appendingPathComponent("Plan.md")) }
-        try await until("its window followed") { FileNode.samePath(controller.url, self.outside.appendingPathComponent("Plan.md")) }
-        await Workspace.shared.linksFollowed()
+        try await settle(workspace, manager)
+        XCTAssertEqual(workspace.currentURL, outside.appendingPathComponent("Plan.md"))
         XCTAssertEqual(text(outside.appendingPathComponent("Other.md")), "See [[Plan]] and [[Plan#Top|the top]].\n")
         XCTAssertEqual(text(outside.appendingPathComponent("Third.md")), "[[Plan.md]]\n")
         XCTAssertEqual(text(outside.appendingPathComponent("Plan.md")), "# Draft\n\n[[Other]]\n")

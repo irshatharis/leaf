@@ -161,8 +161,8 @@ extension Workspace {
             actions.addLocation()
         })
         #if os(macOS)
-        list.append(PaletteCommand(id: "open", title: "Open…", symbol: "arrow.up.forward.square", section: new, keys: ["⌘", "O"], keywords: ["file"]) {
-            FileWindows.shared.choose()
+        list.append(PaletteCommand(id: "open", title: "Open…", symbol: "arrow.up.forward.square", section: new, keys: ["⌘", "O"], keywords: ["file"]) { [self] in
+            chooseFiles()
         })
         #endif
 

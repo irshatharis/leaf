@@ -269,27 +269,6 @@ final class LooseTodosTests: XCTestCase {
         XCTAssertEqual(loose(workspace), "- [ ] Butter\n")
     }
 
-    #if os(macOS)
-    /// A note open in a window of its own takes the move in from its file: Undo is To-dos', and the note's window has
-    /// none that would take only half of it back.
-    func testMovingATodoIntoANoteOpenInItsOwnWindow() async throws {
-        let workspace = try await makeWorkspace(loose: "- [ ] Rice\n")
-        workspace.showTodos()
-        FileWindows.shared.open(trip)
-        let controller = try XCTUnwrap(FileWindows.shared.windows.compactMap { $0.windowController as? FileWindowController }.first { FileNode.samePath($0.url, trip) })
-        defer { controller.window?.close() }
-        try await until { controller.isLoaded }
-        let rice = try XCTUnwrap(workspace.todos.items.first { $0.todo.text == "Rice" })
-        await workspace.moveTodo(rice.reference, toNote: trip)?.value
-        try await until { controller.editor.text == "- [ ] Pack the adapter\n- [ ] Rice\n" }
-        XCTAssertNotEqual(controller.window?.undoManager?.undoActionName, "Move to Note")
-        try await until { workspace.fileUndoManager.groupingLevel == 0 }
-        workspace.fileUndoManager.undo()
-        await workspace.todosWritten()
-        try await until { controller.editor.text == "- [ ] Pack the adapter\n" }
-        XCTAssertEqual(loose(workspace), "- [ ] Rice\n")
-    }
-    #endif
 
     func testAnUnreadableFileOfTodosDoesntHoldUpTheOthers() async throws {
         UserDefaults.standard.set(library.path, forKey: "NotebookLibrary")
