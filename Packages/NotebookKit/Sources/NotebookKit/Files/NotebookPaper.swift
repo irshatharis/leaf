@@ -128,7 +128,7 @@ enum NotebookPaper {
     static func document(_ style: PaperStyle, size: CGSize) -> Data? {
         guard let document = PDFDocument(data: pageData(style, size: size)), let page = document.page(at: 0) else { return nil }
         mark(page, as: style)
-        document.documentAttributes = [PDFDocumentAttribute.creatorAttribute: "Notebook"]
+        document.documentAttributes = [PDFDocumentAttribute.creatorAttribute: "Leaf"]
         return document.dataRepresentation()
     }
 

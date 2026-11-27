@@ -82,7 +82,7 @@ final class TextRecognizer {
     /// In the app's caches: what was read can always be read again.
     nonisolated static var defaultStoreURL: URL? {
         guard let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else { return nil }
-        return caches.appendingPathComponent(Bundle.main.bundleIdentifier ?? "Notebook", isDirectory: true)
+        return caches.appendingPathComponent(Bundle.main.bundleIdentifier ?? "Leaf", isDirectory: true)
             .appendingPathComponent("Text in pictures.plist")
     }
 

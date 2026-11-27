@@ -58,14 +58,14 @@ final class LooseTodos {
     /// In Application Support, in a folder whose name ends in `.noindex`, which Spotlight leaves out.
     static var defaultLocalFolder: URL {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return support.appendingPathComponent(Bundle.main.bundleIdentifier ?? "Notebook", isDirectory: true)
+        return support.appendingPathComponent(Bundle.main.bundleIdentifier ?? "Leaf", isDirectory: true)
             .appendingPathComponent("To-dos.noindex", isDirectory: true)
     }
 
     /// Where the app keeps them; tests keep theirs apart.
     static var defaultPlace: Place {
         if ProcessInfo.isTesting {
-            return .folder(FileManager.default.temporaryDirectory.appendingPathComponent("Notebook to-dos \(UUID().uuidString)", isDirectory: true))
+            return .folder(FileManager.default.temporaryDirectory.appendingPathComponent("Leaf to-dos \(UUID().uuidString)", isDirectory: true))
         }
         return .container(local: defaultLocalFolder)
     }
@@ -193,7 +193,7 @@ final class LooseTodos {
 
     nonisolated private static let readQueue: OperationQueue = {
         let queue = OperationQueue()
-        queue.name = "Notebook to-dos reads"
+        queue.name = "Leaf to-dos reads"
         queue.qualityOfService = .userInitiated
         return queue
     }()

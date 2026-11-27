@@ -13,7 +13,7 @@ public struct NotebookScene: Scene {
     }
 
     public var body: some Scene {
-        Window("Notebook", id: "main") {
+        Window("Leaf", id: "main") {
             RootView()
                 .onAppear {
                     workspace.start()
@@ -29,8 +29,8 @@ public struct NotebookScene: Scene {
         .defaultLaunchBehavior(.presented)
         .commands {
             CommandGroup(replacing: .appInfo) {
-                Button("About Notebook") { Acknowledgements.showAbout() }
-                Button("Rate Notebook on the App Store…") { AppReview.openAppStore() }
+                Button("About Leaf") { Acknowledgements.showAbout() }
+                Button("Rate Leaf on the App Store…") { AppReview.openAppStore() }
             }
             CommandGroup(replacing: .importExport) {
                 Button { workspace.chooseAppleNotesExport() } label: { Label("Import from Apple Notes…", systemImage: "square.and.arrow.down.on.square") }
@@ -312,7 +312,7 @@ private struct MainWindowItem: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Button("Notebook") { openWindow(id: "main") }
+        Button("Leaf") { openWindow(id: "main") }
     }
 }
 
@@ -370,7 +370,7 @@ struct GeneralSettings: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                 Toggle("Ask before deleting notes", isOn: Bindable(NotebookSettings.shared).asksBeforeDeletingNotes)
-                Text("Notebook asks before a note with something in it goes to the Trash. Empty notes go right away.")
+                Text("Leaf asks before a note with something in it goes to the Trash. Empty notes go right away.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
@@ -380,7 +380,7 @@ struct GeneralSettings: View {
                         .foregroundStyle(.secondary)
                 }
                 Toggle("Find text in pictures and handwriting", isOn: Bindable(NotebookSettings.shared).readsTextInPictures)
-                Text("Notebook reads the words in pictures, scanned PDFs and drawings on this Mac, in the background, so search finds them.")
+                Text("Leaf reads the words in pictures, scanned PDFs and drawings on this Mac, in the background, so search finds them.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }

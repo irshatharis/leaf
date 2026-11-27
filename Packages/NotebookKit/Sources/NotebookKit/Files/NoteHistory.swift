@@ -53,7 +53,7 @@ final class NoteHistory: @unchecked Sendable {
     static let shared: NoteHistory = {
         // Tests never write into the app's own history.
         if ProcessInfo.isTesting {
-            return NoteHistory(local: FileManager.default.temporaryDirectory.appendingPathComponent("Notebook history \(UUID().uuidString)", isDirectory: true))
+            return NoteHistory(local: FileManager.default.temporaryDirectory.appendingPathComponent("Leaf history \(UUID().uuidString)", isDirectory: true))
         }
         return NoteHistory(local: defaultLocalFolder, cloud: .container)
     }()
@@ -62,7 +62,7 @@ final class NoteHistory: @unchecked Sendable {
     /// every old copy among the notes: it leaves out a folder whose name ends in `.noindex`.
     static var defaultLocalFolder: URL {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return support.appendingPathComponent(Bundle.main.bundleIdentifier ?? "Notebook", isDirectory: true)
+        return support.appendingPathComponent(Bundle.main.bundleIdentifier ?? "Leaf", isDirectory: true)
             .appendingPathComponent("History.noindex", isDirectory: true)
     }
 
@@ -80,11 +80,11 @@ final class NoteHistory: @unchecked Sendable {
     }()
 
     /// Everything happens here, one after another.
-    private let queue = DispatchQueue(label: "Notebook history", qos: .utility)
+    private let queue = DispatchQueue(label: "Leaf history", qos: .utility)
     /// Where versions are read: a coordinated read waits there for iCloud to bring one down without holding a thread.
     private static let readQueue: OperationQueue = {
         let queue = OperationQueue()
-        queue.name = "Notebook history reads"
+        queue.name = "Leaf history reads"
         queue.qualityOfService = .userInitiated
         return queue
     }()
@@ -810,7 +810,7 @@ final class NoteHistory: @unchecked Sendable {
         #if os(iOS)
         // The app's own folder, On My iPhone › Notebook, is somewhere else after an update.
         let home = HiddenFolders.withoutPrivate(URL(fileURLWithPath: NSHomeDirectory()).standardizedFileURL.path)
-        if path == home || path.hasPrefix(home + "/") { return (false, "Notebook" + path.dropFirst(home.count)) }
+        if path == home || path.hasPrefix(home + "/") { return (false, "Leaf" + path.dropFirst(home.count)) }
         #endif
         return (false, String(path.drop { $0 == "/" }))
     }

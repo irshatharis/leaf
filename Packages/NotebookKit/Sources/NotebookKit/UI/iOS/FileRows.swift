@@ -292,10 +292,10 @@ enum FileActions {
                 ShowHiddenFolders.entry(workspace, location)
             }
             MenuEntry.divider
-            MenuEntry("Remove from Notebook", "minus.circle", destructive: true) { workspace.removeLocation(location.id) }
+            MenuEntry("Remove from Leaf", "minus.circle", destructive: true) { workspace.removeLocation(location.id) }
         } else if isKept {
             MenuEntry.divider
-            MenuEntry("Remove from Notebook", "minus.circle", destructive: true) { withAnimation { workspace.removeKeptFile(url) } }
+            MenuEntry("Remove from Leaf", "minus.circle", destructive: true) { withAnimation { workspace.removeKeptFile(url) } }
         } else if !isLinked {
             MenuEntry.divider
             MenuEntry("Delete", "trash", destructive: true) { workspace.trashAfterAsking(url) }
@@ -495,7 +495,7 @@ struct FileAlerts: ViewModifier {
             .alert(workspace.problem?.title ?? "", isPresented: Binding(get: { workspace.problem != nil }, set: { if !$0 { workspace.problem = nil } }), presenting: workspace.problem) { problem in
                 if problem.removableLocation != nil {
                     Button("Keep", role: .cancel) { workspace.answer(problem, removing: false) }
-                    Button("Remove from Notebook", role: .destructive) { workspace.answer(problem, removing: true) }
+                    Button("Remove from Leaf", role: .destructive) { workspace.answer(problem, removing: true) }
                 } else {
                     Button("OK") { workspace.problem = nil }
                 }

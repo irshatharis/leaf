@@ -144,7 +144,7 @@ struct PlacePicker: View {
         Task {
             defer { isLocating = false }
             guard let location = await PlaceAccess.shared.currentLocation() else {
-                problem = PlaceAccess.shared.isDenied ? "Location access is turned off for Notebook." : "Your location couldn’t be found."
+                problem = PlaceAccess.shared.isDenied ? "Location access is turned off for Leaf." : "Your location couldn’t be found."
                 return
             }
             let name = await PlaceSearch.name(of: location) ?? "Current Location"

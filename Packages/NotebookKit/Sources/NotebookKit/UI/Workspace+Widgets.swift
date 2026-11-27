@@ -97,8 +97,8 @@ extension Workspace {
         if !notTicked.isEmpty {
             let names = ListFormatter.localizedString(byJoining: notTicked)
             reportInFront("Not Ticked", notTicked.count == 1
-                          ? "\(names) changed, or its note moved, after you ticked it in the widget, so Notebook left it as it is."
-                          : "\(names) changed, or their notes moved, after you ticked them in the widget, so Notebook left them as they are.")
+                          ? "\(names) changed, or its note moved, after you ticked it in the widget, so Leaf left it as it is."
+                          : "\(names) changed, or their notes moved, after you ticked them in the widget, so Leaf left them as they are.")
         }
         publishWidgetTodos()
         WidgetCenter.shared.reloadTimelines(ofKind: WidgetData.todosKind)

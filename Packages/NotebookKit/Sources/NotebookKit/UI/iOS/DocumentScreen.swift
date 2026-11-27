@@ -257,7 +257,7 @@ struct DocumentScreen: View {
                 MenuEntry("Print", "printer", keys: "⌘P", enabled: isLoaded) { NoteExporter.print(workspace.editor, title: name) }
                 MenuEntry.divider
                 if isKept {
-                    MenuEntry("Remove from Notebook", "minus.circle", destructive: true) { workspace.removeKeptFile(url) }
+                    MenuEntry("Remove from Leaf", "minus.circle", destructive: true) { workspace.removeKeptFile(url) }
                 } else {
                     MenuEntry("Delete", "trash", destructive: true) { workspace.trashAfterAsking(url) }
                 }

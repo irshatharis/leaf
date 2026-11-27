@@ -90,7 +90,7 @@ struct VersionPreview: View {
                 }
             } else if browser.versions != nil {
                 ContentUnavailableView("No Earlier Versions", systemImage: "clock.arrow.circlepath",
-                                       description: Text("Notebook keeps a version when you start changing a note, every ten minutes while you write, and when you stop."))
+                                       description: Text("Leaf keeps a version when you start changing a note, every ten minutes while you write, and when you stop."))
             }
         }
         .background(Color.theme(Theme.panel))
@@ -307,7 +307,7 @@ struct VersionHistorySheet: View {
         .overlay {
             if browser.versions?.isEmpty == true {
                 ContentUnavailableView("No Earlier Versions", systemImage: "clock.arrow.circlepath",
-                                       description: Text("Notebook keeps a version when you start changing a note, every ten minutes while you write, and when you stop."))
+                                       description: Text("Leaf keeps a version when you start changing a note, every ten minutes while you write, and when you stop."))
             }
         }
         .navigationTitle("Version History")

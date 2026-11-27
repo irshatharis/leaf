@@ -645,23 +645,23 @@ public final class Workspace: NSObject {
         #else
         let device = Location.onDeviceName
         #endif
-        reportInFront("Notebook can’t open “\(name)”.", Self.noFolderReason + " Choose a folder in iCloud Drive or \(device) instead."
+        reportInFront("Leaf can’t open “\(name)”.", Self.noFolderReason + " Choose a folder in iCloud Drive or \(device) instead."
                       + Self.singleFilesHint)
     }
 
     /// The same for a location in the sidebar from before Notebook looked, with a button that takes it out of the
     /// sidebar there and then, rather than sending you to its menu.
     func unreadable(_ location: Location) -> Problem {
-        Problem(title: "Notebook can’t read “\(location.name)”.", message: Self.noFolderReason + " Removing it from the sidebar deletes nothing."
+        Problem(title: "Leaf can’t read “\(location.name)”.", message: Self.noFolderReason + " Removing it from the sidebar deletes nothing."
                 + Self.singleFilesHint, removableLocation: location.id)
     }
 
-    private static let noFolderReason = "The app it comes from gives other apps only single files, not folders, so Notebook can’t "
+    private static let noFolderReason = "The app it comes from gives other apps only single files, not folders, so Leaf can’t "
         + "see what’s in it. Nextcloud is one of these apps."
 
     /// What such an app does give: its files, which Open File keeps on their own (`Workspace+KeptFiles`).
     #if os(iOS)
-    private static let singleFilesHint = " To keep its notes in Notebook one by one, use Open File."
+    private static let singleFilesHint = " To keep its notes in Leaf one by one, use Open File."
     #else
     private static let singleFilesHint = ""
     #endif
@@ -723,14 +723,14 @@ public final class Workspace: NSObject {
     /// Asks for iCloud Drive (or another folder) and adds it.
     public func chooseLocation(iCloud: Bool) {
         let start = iCloud ? URL(fileURLWithPath: Location.iCloudDrivePath, isDirectory: true) : FileManager.default.homeDirectoryForCurrentUser
-        guard let url = LocationStore.choose(startingIn: start, message: iCloud ? "Click Open to show iCloud Drive in Notebook." : nil) else { return }
+        guard let url = LocationStore.choose(startingIn: start, message: iCloud ? "Click Open to show iCloud Drive in Leaf." : nil) else { return }
         addLocation(url)
     }
 
     /// Asks where to put the sample notes, since the sandbox writes only where you chose, and makes them there.
     func chooseSampleNotesFolder() {
         guard let url = LocationStore.choose(startingIn: FileManager.default.homeDirectoryForCurrentUser,
-                                             message: "Choose where to put the sample notes. Notebook makes a folder Sample Notes there.",
+                                             message: "Choose where to put the sample notes. Leaf makes a folder Sample Notes there.",
                                              prompt: "Make Sample Notes") else { return }
         addSampleNotes(in: url)
     }
@@ -2018,7 +2018,7 @@ public final class Workspace: NSObject {
             change.made = made?.snapshot
             changeDone(change, to: made?.url)
             guard let made else {
-                report("The note couldn’t be made.", "Notebook can’t write in “\(folderName(chosen))”.")
+                report("The note couldn’t be made.", "Leaf can’t write in “\(folderName(chosen))”.")
                 return nil
             }
             // The Inbox, made for the first note in it, shows too.
@@ -2059,7 +2059,7 @@ public final class Workspace: NSObject {
             change.made = made?.snapshot
             changeDone(change, to: made?.url)
             guard let made else {
-                report("The handwritten note couldn’t be made.", "Notebook can’t write in “\(folderName(chosen))”.")
+                report("The handwritten note couldn’t be made.", "Leaf can’t write in “\(folderName(chosen))”.")
                 return nil
             }
             let folder = made.folder
@@ -2113,7 +2113,7 @@ public final class Workspace: NSObject {
             change.made = made?.snapshot
             changeDone(change, to: made?.url)
             guard let made else {
-                return report("The folder couldn’t be made.", "Notebook can’t write in “\(folderName(parent))”.")
+                return report("The folder couldn’t be made.", "Leaf can’t write in “\(folderName(parent))”.")
             }
             let url = made.url
             // In the sidebar at once, however long reading its folder takes in iCloud, with its dates: where the newest
@@ -2732,7 +2732,7 @@ public final class Workspace: NSObject {
     var currentTitle: String {
         if showsTodos { return todosTitle }
         if showsFavorites { return "Favorites" }
-        guard let currentURL else { return "Notebook" }
+        guard let currentURL else { return "Leaf" }
         if let name = newName(for: currentURL) { return name }
         return FileKind(url: currentURL, isDirectory: false) == .note ? currentURL.deletingPathExtension().lastPathComponent : currentURL.lastPathComponent
     }

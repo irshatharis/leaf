@@ -29,7 +29,7 @@ final class FileWatcher {
 
     /// The event stream, only touched on `queue`, where it is started, stopped and tells about changes.
     private final class Stream: @unchecked Sendable {
-        static let queue = DispatchQueue(label: "Notebook file events", qos: .utility)
+        static let queue = DispatchQueue(label: "Leaf file events", qos: .utility)
         private var ref: FSEventStreamRef?
         private var isStopped = false
         private let handler: ([String]) -> Void

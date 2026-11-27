@@ -16,11 +16,11 @@
 		<string>com.lukaskbl.Notebook.reminders</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Notebook uses the camera to take photos and scan documents into your notes.</string>
+	<string>Leaf uses the camera to take photos and scan documents into your notes.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Notebook reminds you of a note or a to-do when you arrive at or leave a place you chose, and finds where you are for Current Location.</string>
+	<string>Leaf reminds you of a note or a to-do when you arrive at or leave a place you chose, and finds where you are for Current Location.</string>
 	<key>NSLocationUsageDescription</key>
-	<string>Notebook finds where you are when you choose Current Location for a reminder.</string>
+	<string>Leaf finds where you are when you choose Current Location for a reminder.</string>
 	<key>NotebookAppGroup</key>
 	<string>$(NOTEBOOK_APP_GROUP)</string>
 	<key>CoreSpotlightContinuation</key>

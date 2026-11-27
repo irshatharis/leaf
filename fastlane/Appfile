@@ -1,2 +1,0 @@
-# The Mac, iPhone and iPad apps are one App Store app with this bundle identifier.
-app_identifier("com.lukaskbl.Notebook")

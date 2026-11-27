@@ -21,7 +21,7 @@ enum FolderAccess {
     private static let isSandboxed = NSHomeDirectory().contains("/Library/Containers/")
 
     /// Whether Notebook may write in `folder`, asking for it when it may not yet. `why` ends the sentence
-    /// "Notebook needs the folder “…” to …".
+    /// "Leaf needs the folder “…” to …".
     static func ensure(_ folder: URL, to why: String) -> Bool {
         let folder = folder.standardizedFileURL
         guard isSandboxed, Workspace.shared.location(containing: folder) == nil, !accessing.contains(id(folder)) else { return true }
@@ -32,7 +32,7 @@ enum FolderAccess {
         panel.allowsMultipleSelection = false
         panel.directoryURL = folder
         panel.prompt = "Allow"
-        panel.message = "Notebook needs the folder “\(folder.lastPathComponent)” to \(why). Click Allow to let it."
+        panel.message = "Leaf needs the folder “\(folder.lastPathComponent)” to \(why). Click Allow to let it."
         guard panel.runModal() == .OK, let chosen = panel.url, FileNode.samePath(chosen, folder) else { return false }
         if chosen.startAccessingSecurityScopedResource() { accessing.insert(id(folder)) }
         if let bookmark = try? chosen.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) {
@@ -74,7 +74,7 @@ enum FolderAccess {
     }
 
     /// Asks for `folder` when Notebook may not write in it yet: an alert that says why, then the folder picker open
-    /// at it. `why` ends the sentence "Notebook needs the folder “…” to …". True once it may.
+    /// at it. `why` ends the sentence "Leaf needs the folder “…” to …". True once it may.
     static func ask(for folder: URL, to why: String) async -> Bool {
         let folder = folder.standardizedFileURL
         resumeKept()
@@ -85,7 +85,7 @@ enum FolderAccess {
         defer { isAsking = false }
         let name = folder.lastPathComponent
         let allow = UIAlertController(title: "Allow Access to “\(name)”?",
-                                      message: "Notebook needs the folder “\(name)” to \(why). Tap Open on the next screen to let it.",
+                                      message: "Leaf needs the folder “\(name)” to \(why). Tap Open on the next screen to let it.",
                                       preferredStyle: .alert)
         guard await answer(allow, cancel: "Not Now", go: "Continue") else { return false }
         while let chosen = await pickFolder(at: folder) {
@@ -95,7 +95,7 @@ enum FolderAccess {
                 return true
             }
             let other = UIAlertController(title: "Choose “\(name)”",
-                                          message: "Notebook needs the folder “\(name)”, or a folder it is in, to \(why). “\(chosen.lastPathComponent)” is somewhere else.",
+                                          message: "Leaf needs the folder “\(name)”, or a folder it is in, to \(why). “\(chosen.lastPathComponent)” is somewhere else.",
                                           preferredStyle: .alert)
             guard await answer(other, cancel: "Cancel", go: "Choose Again") else { return false }
         }

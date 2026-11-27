@@ -211,7 +211,7 @@ struct HomeScreen: View {
             }
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { listWidth = $0 }
-        .navigationTitle("Notebook")
+        .navigationTitle("Leaf")
         .searchable(text: $query, isPresented: $isSearching, prompt: "Search")
         .onChange(of: query, initial: true) { _, query in workspace.searchSession.update(query) }
         .onSubmit(of: .search) { submitSearch() }

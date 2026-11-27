@@ -498,7 +498,7 @@ enum DebugRemote {
         case "makelong":
             // A long note to try typing in: the sample notes many times over.
             guard let root = workspace.locations.first?.url else { return }
-            let parts = ["Travel/Kyoto trip.md", "Projects/Notebook roadmap.md", "University/Linear algebra/Week 3.md", "Travel/Budget.md"]
+            let parts = ["Travel/Kyoto trip.md", "Projects/Leaf roadmap.md", "University/Linear algebra/Week 3.md", "Travel/Budget.md"]
             let text = parts.compactMap { try? String(contentsOf: root.appendingPathComponent($0), encoding: .utf8) }.joined(separator: "\n\n")
             let long = Array(repeating: text, count: Int(numbers.first ?? 20)).joined(separator: "\n\n## Again\n\n")
             try? long.write(to: root.appendingPathComponent("Long note.md"), atomically: true, encoding: .utf8)

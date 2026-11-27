@@ -25,7 +25,7 @@ struct UnsavedReport: Identifiable {
         if let copy {
             return why + "What you typed is kept as “\(copy.lastPathComponent)” in \(UnsavedNotes.placeName). The note itself is as it was last saved."
         }
-        return why + "No copy could be kept in Notebook’s folder either. Copy what you typed to paste it somewhere else, or try again."
+        return why + "No copy could be kept in Leaf’s folder either. Copy what you typed to paste it somewhere else, or try again."
     }
 
     /// A copy kept that wasn't told about yet, as it is remembered between launches.

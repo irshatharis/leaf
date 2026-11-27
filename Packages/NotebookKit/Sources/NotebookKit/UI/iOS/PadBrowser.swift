@@ -149,7 +149,7 @@ struct PadBrowser: View {
     private var splitView: some View {
         NavigationSplitView(columnVisibility: columnVisibility) {
             PadSidebar(workspace: workspace, query: query, newFolderIn: $newFolderIn)
-                .navigationTitle("Notebook")
+                .navigationTitle("Leaf")
                 .searchable(text: $query, placement: .sidebar, prompt: "Search")
                 .onChange(of: query, initial: true) { _, query in workspace.searchSession.update(query) }
                 .searchFocused($isSearchFocused)
@@ -175,7 +175,7 @@ struct PadBrowser: View {
                             MenuEntry("Settings", "gearshape", keys: "⌘,") { showsSettings = true }
                         } label: {
                             // Not More, which the note's ⋯ next to it is.
-                            Label("More for Notebook", systemImage: "ellipsis")
+                            Label("More for Leaf", systemImage: "ellipsis")
                         }
                     }
                     ToolbarSpacer(.fixed, placement: .topBarTrailing)

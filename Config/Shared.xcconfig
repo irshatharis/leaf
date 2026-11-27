@@ -7,7 +7,7 @@ CURRENT_PROJECT_VERSION = 1
 // The app's bundle identifier; its extensions' start with it (Widgets.xcconfig). A build of your own takes another
 // with NOTEBOOK_BUNDLE_IDENTIFIER=com.example.Notebook on the command line. PRODUCT_BUNDLE_IDENTIFIER there would give
 // the extensions the app's identifier too, which the build refuses.
-NOTEBOOK_BUNDLE_IDENTIFIER = com.lukaskbl.Notebook
+NOTEBOOK_BUNDLE_IDENTIFIER = com.irshath.Leaf
 PRODUCT_BUNDLE_IDENTIFIER = $(NOTEBOOK_BUNDLE_IDENTIFIER)
 
 // The App Group in which the share extension leaves what is shared, for the app to write into the notes (SharedNotes
@@ -15,8 +15,8 @@ PRODUCT_BUNDLE_IDENTIFIER = $(NOTEBOOK_BUNDLE_IDENTIFIER)
 // other builds the share extension can't keep anything, and the app never looks in a group's folder: on the Mac that
 // would ask you for access to other apps' data.
 NOTEBOOK_APP_GROUP =
-NOTEBOOK_APP_GROUP[config=AppStore] = group.com.lukaskbl.Notebook
-NOTEBOOK_APP_GROUP[sdk=iphonesimulator*] = group.com.lukaskbl.Notebook
+NOTEBOOK_APP_GROUP[config=AppStore] = group.com.irshath.Leaf
+NOTEBOOK_APP_GROUP[sdk=iphonesimulator*] = group.com.irshath.Leaf
 
 // The app and its Quick Look and thumbnail extensions share one NotebookKit, a framework in the app's Frameworks folder
 // (Packages/NotebookKit/Package.swift). Its resources go into it once, by a build phase that moves and removes the

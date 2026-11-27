@@ -14,9 +14,9 @@ final class FolderReader {
     typealias Result = (path: String, listing: [FileNode.Listing]?)
 
     /// Folders being opened and changes, a few at once so iCloud isn't asked for everything at the same time.
-    private let queue = FolderReader.queue("Notebook folders", width: 4)
+    private let queue = FolderReader.queue("Leaf folders", width: 4)
     /// Folders read ahead of time, on slots of their own: they never keep one you open waiting.
-    private let aheadQueue = FolderReader.queue("Notebook folders ahead", width: 2)
+    private let aheadQueue = FolderReader.queue("Leaf folders ahead", width: 2)
     /// The newest read of each folder, so one that was overtaken by a later read is dropped when it finishes.
     private var newest: [String: Int] = [:]
     /// The read ahead of time waiting for each folder, to read it next instead when the folder is opened.

@@ -9,7 +9,7 @@ import AppIntents
 /// (`makeNote`).
 public struct NewNoteIntent: AppIntent {
     public static let title: LocalizedStringResource = "New Note"
-    public static let description = IntentDescription("Opens Notebook with a new note in the default folder, ready for its title.")
+    public static let description = IntentDescription("Opens Leaf with a new note in the default folder, ready for its title.")
     public static let supportedModes: IntentModes = .foreground(.immediate)
 
     @Parameter(title: "Text", description: "What the note starts with.", inputOptions: String.IntentInputOptions(multiline: true))
@@ -46,7 +46,7 @@ public enum NewNoteIntentError: Error, CustomLocalizedStringResourceConvertible 
 
     public var localizedStringResource: LocalizedStringResource {
         switch self {
-        case .noLocation: "Choose where your notes are in Notebook first."
+        case .noLocation: "Choose where your notes are in Leaf first."
         case .notMade: "The note couldn’t be made."
         }
     }

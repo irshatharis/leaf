@@ -132,7 +132,7 @@ extension EditorController {
     /// Takes promised files as files dropped from the Finder, once they have all been written: a photo in iCloud
     /// comes down first. They are asked for while the drop goes on, the only time AppKit allows it.
     private func receive(_ promises: [NSFilePromiseReceiver], at target: NSRange) {
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Notebook drop \(UUID().uuidString)", isDirectory: true)
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Leaf drop \(UUID().uuidString)", isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let note = loadCount
         // In the order they were dragged, each written on the promise queue.

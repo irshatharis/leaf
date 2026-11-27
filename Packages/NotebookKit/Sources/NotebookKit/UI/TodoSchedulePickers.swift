@@ -172,7 +172,7 @@ struct TodoPlaceDropdown: View {
                     .labelsHidden()
                 }
                 if let choosing {
-                    note("Notebook keeps \(choosing.name) for your reminders, on your other devices too.")
+                    note("Leaf keeps \(choosing.name) for your reminders, on your other devices too.")
                 }
                 #if os(macOS)
                 note("Your iPhone or iPad reminds you there.")
@@ -312,7 +312,7 @@ struct TodoPlaceDropdown: View {
             Task {
                 defer { busy = nil }
                 guard let location = await PlaceAccess.shared.currentLocation() else {
-                    problem = ("here", PlaceAccess.shared.isDenied ? "Location access is turned off for Notebook." : "Your location couldn’t be found.")
+                    problem = ("here", PlaceAccess.shared.isDenied ? "Location access is turned off for Leaf." : "Your location couldn’t be found.")
                     return
                 }
                 let name = await PlaceSearch.name(of: location) ?? "Current Location"

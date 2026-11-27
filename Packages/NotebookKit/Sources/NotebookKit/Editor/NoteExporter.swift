@@ -57,7 +57,7 @@ public enum NoteExporter {
             // Printed to a file, so the note is set on pages of the paper size you print on.
             let info = printInfo()
             let copy = await layOut(editor, title: title, width: info.paperSize.width - info.leftMargin - info.rightMargin, margin: 0)
-            let file = FileManager.default.temporaryDirectory.appendingPathComponent("Notebook export \(UUID().uuidString).pdf")
+            let file = FileManager.default.temporaryDirectory.appendingPathComponent("Leaf export \(UUID().uuidString).pdf")
             info.jobDisposition = .save
             info.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] = file
             let operation = NSPrintOperation(view: copy.view, printInfo: info)

@@ -20,9 +20,9 @@ extension Workspace {
             if await write(shared.note, files: shared.files) {
                 await Task.detached(priority: .utility) { SharedNotes.remove(shared.note) }.value
             } else if await Task.detached(priority: .utility, operation: { SharedNotes.failedFirstTime(shared.note) }).value {
-                let name = shared.note.title.map { "“\($0)”, shared to Notebook," } ?? "What was shared to Notebook"
+                let name = shared.note.title.map { "“\($0)”, shared to Leaf," } ?? "What was shared to Leaf"
                 reportInFront("Couldn’t Add What Was Shared",
-                              "\(name) couldn’t be added to your notes. Notebook keeps it and tries again each time it opens.")
+                              "\(name) couldn’t be added to your notes. Leaf keeps it and tries again each time it opens.")
             }
         }
     }

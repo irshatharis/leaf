@@ -67,7 +67,7 @@ extension Workspace {
                     keep(item.url)
                     if first == nil { first = item.url }
                 case .nothing:
-                    report("Notebook can’t open “\(item.url.lastPathComponent)”.", "The file isn’t there any more, or the app it comes from doesn’t give it now.")
+                    report("Leaf can’t open “\(item.url.lastPathComponent)”.", "The file isn’t there any more, or the app it comes from doesn’t give it now.")
                 }
             }
             if let first { open(first) }

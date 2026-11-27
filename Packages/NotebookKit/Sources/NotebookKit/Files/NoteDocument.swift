@@ -141,7 +141,7 @@ public final class NoteDocument: NSObject, NSFilePresenter {
     /// Where notes are read and written. The coordinated reads and writes wait for iCloud without holding a thread.
     private nonisolated static let fileQueue: OperationQueue = {
         let queue = OperationQueue()
-        queue.name = "Notebook notes"
+        queue.name = "Leaf notes"
         queue.qualityOfService = .userInitiated
         return queue
     }()

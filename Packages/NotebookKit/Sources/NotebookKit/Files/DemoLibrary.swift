@@ -288,7 +288,7 @@ enum DemoLibrary {
         ```
 
         """)
-        write("Projects/Notebook roadmap.md", """
+        write("Projects/Leaf roadmap.md", """
         How the pieces fit together, and what ships when.
 
         ## Architecture
@@ -387,7 +387,7 @@ enum DemoLibrary {
         ])
         markUp(root.appendingPathComponent("Travel/Flight tickets.pdf"))
         makePDF(at: root.appendingPathComponent("Projects/Offer.pdf"), title: "Offer", lines: [
-            "Design and build of the Notebook website", "Three pages, light and dark", "Delivery in four weeks",
+            "Design and build of the Leaf website", "Three pages, light and dark", "Delivery in four weeks",
         ])
         for item in dates {
             try? fm.setAttributes([.modificationDate: Date(timeIntervalSinceNow: -item.edited * 86_400), .creationDate: Date(timeIntervalSinceNow: -item.made * 86_400)],
@@ -500,7 +500,7 @@ enum DemoLibrary {
         ("Travel/ryokan.jpg", 6, 6), ("Travel/Ryokan confirmation.pdf", 12, 12), ("Travel/Flight tickets.pdf", 30, 30),
         ("Inbox/Shared link.md", 0.1, 0.1), ("Inbox/Errands.md", 0.15, 5), ("Inbox/Gift ideas.md", 4, 40),
         ("Personal/Weekend.md", 0.2, 2), ("Personal/Questions for Dr. Weber.md", 1, 8), ("Personal/Cooking/Recipes.md", 15, 60),
-        ("Projects/Notebook roadmap.md", 0.02, 50), ("Projects/Sync service.adoc", 0.3, 30), ("Projects/Offer.pdf", 10, 10), ("Projects/Design/Meeting notes.md", 7, 49),
+        ("Projects/Leaf roadmap.md", 0.02, 50), ("Projects/Sync service.adoc", 0.3, 30), ("Projects/Offer.pdf", 10, 10), ("Projects/Design/Meeting notes.md", 7, 49),
         ("University/Linear algebra/Week 3.md", 3, 10), ("University/Linear algebra/Lecture 4.pdf", 1, 3), ("Archive/2025/Old apartment.md", 200, 300),
         ("Travel/Photos", 6, 25), ("Personal/Cooking", 15, 60), ("Projects/Design", 7, 50), ("University/Linear algebra", 3, 40),
         ("Archive/2025", 200, 300), ("Travel", 0.5, 30), ("Inbox", 0.1, 60), ("Personal", 2, 60), ("Projects", 10, 50),

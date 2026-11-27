@@ -876,7 +876,7 @@ public final class SearchIndex {
     nonisolated static func storeURL(library: String? = nil, name: String = "Search index", in directory: FileManager.SearchPathDirectory = .cachesDirectory) -> URL? {
         guard !ProcessInfo.isTesting,
               let base = FileManager.default.urls(for: directory, in: .userDomainMask).first else { return nil }
-        let folder = base.appendingPathComponent(Bundle.main.bundleIdentifier ?? "Notebook", isDirectory: true)
+        let folder = base.appendingPathComponent(Bundle.main.bundleIdentifier ?? "Leaf", isDirectory: true)
         guard let library else { return folder.appendingPathComponent(name) }
         return folder.appendingPathComponent(name + " " + String(stableHash(library), radix: 36))
     }

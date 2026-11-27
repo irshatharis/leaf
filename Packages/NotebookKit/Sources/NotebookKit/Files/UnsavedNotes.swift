@@ -15,11 +15,11 @@ enum UnsavedNotes {
     static var defaultFolder: URL {
         // Tests never write into the app's own folder.
         if ProcessInfo.isTesting {
-            return FileManager.default.temporaryDirectory.appendingPathComponent("Notebook unsaved notes \(UUID().uuidString)", isDirectory: true)
+            return FileManager.default.temporaryDirectory.appendingPathComponent("Leaf unsaved notes \(UUID().uuidString)", isDirectory: true)
         }
         #if os(macOS)
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return support.appendingPathComponent(Bundle.main.bundleIdentifier ?? "Notebook", isDirectory: true)
+        return support.appendingPathComponent(Bundle.main.bundleIdentifier ?? "Leaf", isDirectory: true)
             .appendingPathComponent("Unsaved Notes", isDirectory: true)
         #else
         return Workspace.onDeviceFolder.appendingPathComponent("Unsaved Notes", isDirectory: true)
@@ -69,14 +69,14 @@ enum UnsavedNotes {
         (try? Data(contentsOf: url)).flatMap(NoteDocument.decode) == text
     }
 
-    /// Where they are, as you would find them: "On My iPhone › Notebook › Unsaved Notes", or, on the Mac, Notebook's
+    /// Where they are, as you would find them: "On My iPhone › Leaf › Unsaved Notes", or, on the Mac, Notebook's
     /// folder Unsaved Notes.
     @MainActor
     static var placeName: String {
         #if os(iOS)
-        if FileNode.samePath(folder, defaultFolder) { return "\(Location.onDeviceName) › Notebook › Unsaved Notes" }
+        if FileNode.samePath(folder, defaultFolder) { return "\(Location.onDeviceName) › Leaf › Unsaved Notes" }
         #endif
-        return "Notebook’s folder “Unsaved Notes”"
+        return "Leaf’s folder “Unsaved Notes”"
     }
 }
 

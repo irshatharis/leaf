@@ -212,7 +212,7 @@ struct TouchWelcomeView: View {
                     .font(.largeTitle.bold())
                     .multilineTextAlignment(.center)
                     .padding(.bottom, 12)
-                Text("Notebook opens the folders you already use. Notes are Markdown files next to your PDFs and photos.")
+                Text("Leaf opens the folders you already use. Notes are Markdown files next to your PDFs and photos.")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -311,7 +311,7 @@ struct TouchSettings: View {
                 } header: {
                     Text("Folders")
                 } footer: {
-                    Text("Notebook shows the folders you open here and works on their files in place. Removing one leaves its files where they are.")
+                    Text("Leaf shows the folders you open here and works on their files in place. Removing one leaves its files where they are.")
                 }
                 Section {
                     NavigationLink { TextSettings().navigationTitle("Text") } label: { Label("Text", systemImage: "textformat") }
@@ -329,7 +329,7 @@ struct TouchSettings: View {
                 } header: {
                     Text("Notes")
                 } footer: {
-                    Text("New notes go into the folder you’re in; made anywhere else, they go to the default folder. A note you leave with no text in it, or only spaces, is deleted, unless it has a reminder or is a favourite, and so is a new handwritten note you leave without writing in it. Notebook asks before deleting a note with something in it; empty notes go right away.")
+                    Text("New notes go into the folder you’re in; made anywhere else, they go to the default folder. A note you leave with no text in it, or only spaces, is deleted, unless it has a reminder or is a favourite, and so is a new handwritten note you leave without writing in it. Leaf asks before deleting a note with something in it; empty notes go right away.")
                 }
                 TodosSetting()
                 Section {
@@ -367,14 +367,14 @@ struct TouchSettings: View {
                 } header: {
                     Text("Search")
                 } footer: {
-                    Text("Notebook reads the words in pictures, scanned PDFs and handwriting on this device, in the background, so search finds them.")
+                    Text("Leaf reads the words in pictures, scanned PDFs and handwriting on this device, in the background, so search finds them.")
                 }
                 Section {
                     Link(destination: AppReview.writeReviewURL) {
-                        Label("Rate Notebook on the App Store", systemImage: "star")
+                        Label("Rate Leaf on the App Store", systemImage: "star")
                     }
                 } footer: {
-                    Text("A rating or a few words in the App Store help others find Notebook.")
+                    Text("A rating or a few words in the App Store help others find Leaf.")
                 }
                 Section {
                     LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")

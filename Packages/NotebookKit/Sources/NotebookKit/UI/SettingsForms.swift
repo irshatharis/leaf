@@ -97,10 +97,10 @@ struct TodosSetting: View {
             Toggle("Show To-dos", isOn: $settings.showsTodos)
         } footer: {
             #if os(macOS)
-            Text("Every checkbox in your notes, by when it is due, at the top of the sidebar. Turned off, Notebook doesn’t remind you of to-dos either, for when you keep them in another app.")
+            Text("Every checkbox in your notes, by when it is due, at the top of the sidebar. Turned off, Leaf doesn’t remind you of to-dos either, for when you keep them in another app.")
                 .foregroundStyle(.secondary)
             #else
-            Text("Every checkbox in your notes, by when it is due, above your folders. Turned off, Notebook doesn’t remind you of to-dos either, for when you keep them in another app.")
+            Text("Every checkbox in your notes, by when it is due, above your folders. Turned off, Leaf doesn’t remind you of to-dos either, for when you keep them in another app.")
             #endif
         }
     }

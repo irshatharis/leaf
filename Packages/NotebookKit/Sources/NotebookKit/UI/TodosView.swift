@@ -346,7 +346,7 @@ struct TodosView: View {
             Label(workspace.todosFolder.map { "No To-dos in \(workspace.folderName($0))" } ?? "No To-dos", systemImage: "checklist")
         } description: {
             if workspace.todosFolder == nil {
-                Text("Checkboxes in your notes show here, and to-dos you add here. Give one a date, a time or a place, and Notebook reminds you of it.")
+                Text("Checkboxes in your notes show here, and to-dos you add here. Give one a date, a time or a place, and Leaf reminds you of it.")
             } else {
                 Text("Checkboxes in the notes of this folder and the folders in it show here. To-dos you add here go into a note called To-dos in this folder.")
             }

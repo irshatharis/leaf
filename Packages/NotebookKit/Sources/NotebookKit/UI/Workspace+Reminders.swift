@@ -109,7 +109,7 @@ extension Workspace {
         if place, ReminderNotifications.shared.isActive {
             let wasAllowed = PlaceAccess.shared.isAllowed
             if !(await PlaceAccess.shared.requestAccess()) {
-                report("Notebook can’t use your location.", "The place is kept, but your iPhone can’t remind you there. Allow Notebook to use your location in Settings › Apps › Notebook › Location.")
+                report("Leaf can’t use your location.", "The place is kept, but your iPhone can’t remind you there. Allow Leaf to use your location in Settings › Apps › Leaf › Location.")
             } else if !wasAllowed {
                 // Places weren't watched until now.
                 scheduleReminders()
@@ -122,9 +122,9 @@ extension Workspace {
 
     func reportNotificationsOff() {
         #if os(macOS)
-        report("Notifications for Notebook are turned off.", "The reminder is kept, but Notebook can’t tell you when it’s time. Turn on notifications for Notebook in System Settings › Notifications.")
+        report("Notifications for Leaf are turned off.", "The reminder is kept, but Leaf can’t tell you when it’s time. Turn on notifications for Leaf in System Settings › Notifications.")
         #else
-        report("Notifications for Notebook are turned off.", "The reminder is kept, but Notebook can’t tell you when it’s time. Turn on notifications for Notebook in Settings › Apps › Notebook.")
+        report("Notifications for Leaf are turned off.", "The reminder is kept, but Leaf can’t tell you when it’s time. Turn on notifications for Leaf in Settings › Apps › Leaf.")
         #endif
     }
 

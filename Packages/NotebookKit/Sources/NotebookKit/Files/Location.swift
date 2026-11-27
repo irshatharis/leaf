@@ -88,7 +88,7 @@ public struct Location: Identifiable, Codable, Equatable, Sendable {
     /// location too, which the folder is in: the Files app shows it as On My iPhone › Notebook, so then it is Notebook,
     /// and no two locations have the same name.
     static func ownFolderName(among locations: [Location], device: String) -> String {
-        locations.contains { $0.onDeviceFolders?.isEmpty == true } ? "Notebook" : device
+        locations.contains { $0.onDeviceFolders?.isEmpty == true } ? "Leaf" : device
     }
 
     /// Whether two folders are the same, by their paths alone ("/private/var" is "/var").
@@ -135,7 +135,7 @@ public struct Location: Identifiable, Codable, Equatable, Sendable {
     }
 
     #if os(iOS)
-    /// Where the folder is, as the Files app names the places: "iCloud Drive › Notes", "On My iPhone › Notebook".
+    /// Where the folder is, as the Files app names the places: "iCloud Drive › Notes", "On My iPhone › Leaf".
     @MainActor
     var place: String {
         let path = url.path
@@ -144,7 +144,7 @@ public struct Location: Identifiable, Codable, Equatable, Sendable {
         }
         let documents = Workspace.onDeviceFolder.standardizedFileURL.path
         if path == documents || path.hasPrefix(documents + "/") {
-            return ([Self.onDeviceName, "Notebook"] + path.dropFirst(documents.count).split(separator: "/").map(String.init)).joined(separator: " › ")
+            return ([Self.onDeviceName, "Leaf"] + path.dropFirst(documents.count).split(separator: "/").map(String.init)).joined(separator: " › ")
         }
         if let folders = onDeviceFolders {
             return ([Self.onDeviceName] + folders).joined(separator: " › ")
@@ -285,7 +285,7 @@ enum LocationStore {
         panel.allowsMultipleSelection = false
         panel.canCreateDirectories = true
         panel.prompt = prompt
-        panel.message = message ?? "Choose a folder with your notes. Notebook shows everything in it."
+        panel.message = message ?? "Choose a folder with your notes. Leaf shows everything in it."
         panel.directoryURL = directory ?? URL(fileURLWithPath: Location.iCloudDrivePath, isDirectory: true)
         return panel.runModal() == .OK ? panel.url : nil
     }

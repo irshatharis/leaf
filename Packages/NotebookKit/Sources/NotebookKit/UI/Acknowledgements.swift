@@ -96,7 +96,7 @@ struct AcknowledgementsView: View {
                 Text(Acknowledgements.notebook).font(.footnote)
                 Link("Source Code", destination: Acknowledgements.notebookSource)
             } header: {
-                Text("Notebook")
+                Text("Leaf")
             }
             ForEach(Acknowledgements.entries) { entry in
                 Section {
