@@ -2,7 +2,7 @@
 import AppKit
 import SwiftUI
 
-/// A row in the sidebar that isn't a file in a tree: a section title, Search, or Open Folder.
+/// A row in the sidebar that isn't a file in a tree: a section title, Search, Open Folder, or a note or to-do in To-dos.
 final class SidebarEntry: NSObject {
     enum Kind {
         case header(String, location: UUID?)
@@ -12,6 +12,10 @@ final class SidebarEntry: NSObject {
         /// end of the iPhone's list, rather than staying at the bottom of the window. Never selected; a folder dropped
         /// on it is opened, as below the sections.
         case openFolder
+        /// A note with open to-dos, in To-dos' section: its to-dos under it.
+        case todoNote(URL, name: String)
+        /// An open to-do in To-dos' section, or one just ticked there, for a moment.
+        case todo(TodoList.Item)
     }
 
     let kind: Kind
@@ -35,6 +39,15 @@ final class SidebarEntry: NSObject {
     var isOpenFolder: Bool {
         if case .openFolder = kind { return true }
         return false
+    }
+
+    /// To-dos' section, or a note or to-do in it: nothing to drop on, rename or show in the Finder.
+    var isTodos: Bool {
+        switch kind {
+        case .header(_, let location): location == nil
+        case .todoNote, .todo: true
+        case .search, .openFolder: false
+        }
     }
 
     /// Names a section across reloads, to remember which ones you closed.
@@ -69,6 +82,14 @@ final class SidebarController: NSObject, NSOutlineViewDataSource, NSOutlineViewD
     /// again when the sidebar shows them there, as the Finder keeps a renamed folder open.
     private var movedExpansion = Set<String>()
     private var isExpandingSections = false
+    /// To-dos, below Search: the open to-dos by note, a note's to-dos under it as a folder's files are. The notes and
+    /// to-dos are kept from one update to the next, so they slide and fade as they change, and folded ones stay so.
+    private let todosEntry = SidebarEntry(.header("To-dos", location: nil))
+    private var todoNotes: [String: SidebarEntry] = [:]
+    private var todoRows: [String: SidebarEntry] = [:]
+    /// To-dos just ticked here: they stay a moment, ticked, and a second click unticks them.
+    private var tickedTodos: [String: TodoList.Item] = [:]
+    private var collapsedTodoNotes = Set(UserDefaults.standard.stringArray(forKey: "collapsedTodoNotes") ?? [])
 
     init(workspace: Workspace) {
         self.workspace = workspace
@@ -177,9 +198,13 @@ final class SidebarController: NSObject, NSOutlineViewDataSource, NSOutlineViewD
     private let searchEntry = SidebarEntry(.search)
     private let openFolderEntry = SidebarEntry(.openFolder)
 
+    /// To-dos come right after Search, above the files, which can go on for long: what is left to do is always in
+    /// sight. With none open, or To-dos turned off in Settings, the section isn't there.
     private func rebuildTop() {
         visible = [:]
         var items: [AnyObject] = [searchEntry]
+        todosEntry.children = NotebookSettings.shared.showsTodos ? todoChildren() : []
+        if !todosEntry.children.isEmpty { items.append(todosEntry) }
         for location in workspace.locations {
             let files = workspace.root(for: location).map { visibleChildren(of: $0) } ?? []
             items.append(SidebarEntry(.header(location.name, location: location.id), children: files))
@@ -195,6 +220,96 @@ final class SidebarController: NSObject, NSOutlineViewDataSource, NSOutlineViewD
             outline.expandItem(entry)
         }
         isExpandingSections = false
+        expandTodoNotes()
+    }
+
+    // MARK: - To-dos
+
+    /// To-dos' notes, by name, and the to-dos in each, in the note's order; the to-dos in no note after them. A to-do
+    /// just ticked stays where it was.
+    private func todoChildren() -> [AnyObject] {
+        var items = workspace.todos.items
+        let open = Set(items.map(\.id))
+        items += tickedTodos.values.filter { !open.contains($0.id) }
+        var byNote: [String: [TodoList.Item]] = [:]
+        var loose: [TodoList.Item] = []
+        for item in items {
+            if item.isLoose { loose.append(item) } else { byNote[item.url.path, default: []].append(item) }
+        }
+        var notes: [String: SidebarEntry] = [:]
+        var rows: [String: SidebarEntry] = [:]
+        func entries(_ items: [TodoList.Item]) -> [AnyObject] {
+            items.sorted { $0.todo.line < $1.todo.line }.map { item in
+                let entry = todoRows[item.id] ?? SidebarEntry(.todo(item))
+                rows[item.id] = entry
+                return entry
+            }
+        }
+        let sorted = byNote.sorted { a, b in
+            let order = a.value[0].note.localizedStandardCompare(b.value[0].note)
+            return order == .orderedSame ? a.key < b.key : order == .orderedAscending
+        }
+        var children: [AnyObject] = sorted.map { path, items in
+            let note = todoNotes[path] ?? SidebarEntry(.todoNote(items[0].url, name: items[0].note))
+            note.children = entries(items)
+            notes[path] = note
+            return note
+        }
+        children += entries(loose)
+        todoNotes = notes
+        todoRows = rows
+        return children
+    }
+
+    /// The to-dos changed, or one was ticked here: the section shows them as they are now, rows coming and going in
+    /// place. It comes when there are some and goes when there are none.
+    func todosChanged() {
+        guard renaming == nil else { heldAll = true; return }
+        let wasShown = topItems.contains { $0 === todosEntry }
+        let old = todosEntry.children
+        let oldRows = Dictionary(uniqueKeysWithValues: old.compactMap { $0 as? SidebarEntry }.map { (ObjectIdentifier($0), $0.children) })
+        let children = NotebookSettings.shared.showsTodos ? todoChildren() : []
+        guard wasShown == !children.isEmpty else { return reloadSections() }
+        todosEntry.children = children
+        guard wasShown else { return }
+        if outline.isItemExpanded(todosEntry) {
+            rearrange(in: todosEntry, from: old, to: children) {}
+            for case let note as SidebarEntry in children where outline.isItemExpanded(note) {
+                if let before = oldRows[ObjectIdentifier(note)] { rearrange(in: note, from: before, to: note.children) {} }
+            }
+        }
+        // Its count.
+        let header = outline.row(forItem: todosEntry)
+        if header >= 0 { outline.reloadData(forRowIndexes: [header], columnIndexes: [0]) }
+        expandTodoNotes()
+    }
+
+    /// The notes in To-dos open, but those you folded.
+    private func expandTodoNotes() {
+        guard outline.isItemExpanded(todosEntry) else { return }
+        let wasExpanding = isExpandingSections
+        isExpandingSections = true
+        for case let note as SidebarEntry in todosEntry.children where !outline.isItemExpanded(note) {
+            if case .todoNote(let url, _) = note.kind, !collapsedTodoNotes.contains(url.path) { outline.expandItem(note) }
+        }
+        isExpandingSections = wasExpanding
+    }
+
+    /// Ticks a to-do in its note, as To-dos does: it shows ticked for a moment, then goes. Ticked again meanwhile, it
+    /// is to do again.
+    func tick(_ item: TodoList.Item) {
+        if tickedTodos[item.id] != nil {
+            tickedTodos[item.id] = nil
+            workspace.untickTodo(item.reference, to: item.todo.mark)
+            return todosChanged()
+        }
+        tickedTodos[item.id] = item
+        workspace.setTodoDone(item.reference, true)
+        todosChanged()
+        DispatchQueue.main.asyncAfter(deadline: .now() + TodosView.tickedFor) { [weak self] in
+            guard let self, self.tickedTodos.removeValue(forKey: item.id) != nil else { return }
+            self.todosChanged()
+        }
     }
 
     private func section(for location: Location) -> SidebarEntry? {
@@ -492,7 +607,10 @@ final class SidebarController: NSObject, NSOutlineViewDataSource, NSOutlineViewD
     }
 
     func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
-        if let entry = item as? SidebarEntry { return entry.isHeader }
+        if let entry = item as? SidebarEntry {
+            if case .todoNote = entry.kind { return true }
+            return entry.isHeader
+        }
         return (item as? FileNode)?.isFolder ?? false
     }
 
@@ -500,16 +618,16 @@ final class SidebarController: NSObject, NSOutlineViewDataSource, NSOutlineViewD
         (item as? SidebarEntry)?.isHeader ?? false
     }
 
+    /// Only files and folders: To-dos' rows open their note, and what is open stays selected in its section.
     func outlineView(_ outlineView: NSOutlineView, shouldSelectItem item: Any) -> Bool {
-        guard let entry = item as? SidebarEntry else { return true }
-        return !entry.isHeader && !entry.isSearch && !entry.isOpenFolder
+        !(item is SidebarEntry)
     }
 
     /// Open Folder with room above it; every other row as tall as the source list makes them.
     func outlineView(_ outlineView: NSOutlineView, heightOfRowByItem item: Any) -> CGFloat {
         guard let entry = item as? SidebarEntry else { return outlineView.rowHeight }
         switch entry.kind {
-        case .header, .search: return outlineView.rowHeight
+        case .header, .search, .todoNote, .todo: return outlineView.rowHeight
         case .openFolder: return outlineView.rowHeight + SidebarOutlineView.openFolderGap
         }
     }
@@ -534,6 +652,7 @@ final class SidebarController: NSObject, NSOutlineViewDataSource, NSOutlineViewD
             let location = workspace.locations.first { $0.id == id }
             cell.setButtons(for: title, more: location == nil ? nil : { [weak self] button in self?.showMenu(forRowOf: button) },
                             add: location.map { location in { [weak self] in self?.workspace.newNote(in: location.url) } })
+            cell.setCount(entry === todosEntry ? workspace.todos.items.count : nil)
             if let location, workspace.hasHiddenFolders(in: location), workspace.showsHiddenFolders(in: location) {
                 cell.showHiddenButton(true) { [weak self] in self?.workspace.showHiddenFolders(false, in: location) }
             } else {
@@ -551,6 +670,28 @@ final class SidebarController: NSObject, NSOutlineViewDataSource, NSOutlineViewD
         if (item as? SidebarEntry)?.isOpenFolder == true {
             cell.configureOpenFolder { [weak self] in self?.workspace.chooseLocation(iCloud: false) }
             cell.setButtons(more: nil, add: nil)
+            return cell
+        }
+        if let entry = item as? SidebarEntry, case .todoNote(let url, let name) = entry.kind {
+            let open = entry.children.filter { child in
+                guard let child = child as? SidebarEntry, case .todo(let todo) = child.kind else { return false }
+                return tickedTodos[todo.id] == nil
+            }
+            cell.configure(name: name, kind: .note, inCloud: false, url: url, nested: false, items: open.count)
+            cell.setButtons(more: nil, add: nil)
+            return cell
+        }
+        if let entry = item as? SidebarEntry, case .todo(let todo) = entry.kind {
+            let isTicked = tickedTodos[todo.id] != nil
+            cell.configureTodo(todo.todo.text.isEmpty ? "Untitled To-do" : todo.todo.text, isTicked: isTicked,
+                               isOverdue: todo.todo.due?.isOverdue() ?? false, nested: outlineView.level(forItem: item) > 1)
+            cell.setButtons(more: nil, add: nil)
+            cell.setAccessibilityCustomActions([
+                NSAccessibilityCustomAction(name: isTicked ? "Not Done" : "Mark as Done") { [weak self] in
+                    self?.tick(todo)
+                    return true
+                },
+            ])
             return cell
         }
         // Under the pointer: ••• (the row's right-click menu), and on a folder + (a new note in it), as in Notion.
@@ -582,7 +723,12 @@ final class SidebarController: NSObject, NSOutlineViewDataSource, NSOutlineViewD
     func outlineViewItemDidExpand(_ notification: Notification) {
         outline.placeChevron(of: notification.userInfo?["NSObject"])
         showFolding(of: notification.userInfo?["NSObject"])
-        if let entry = notification.userInfo?["NSObject"] as? SidebarEntry, let key = entry.sectionKey {
+        if let entry = notification.userInfo?["NSObject"] as? SidebarEntry, case .todoNote(let url, _) = entry.kind {
+            guard !isExpandingSections else { return }
+            collapsedTodoNotes.remove(url.path)
+            UserDefaults.standard.set(Array(collapsedTodoNotes), forKey: "collapsedTodoNotes")
+        } else if let entry = notification.userInfo?["NSObject"] as? SidebarEntry, let key = entry.sectionKey {
+            if entry === todosEntry { expandTodoNotes() }
             guard !isExpandingSections else { return }
             collapsedSections.remove(key)
             UserDefaults.standard.set(Array(collapsedSections), forKey: "collapsedSections")
@@ -594,7 +740,10 @@ final class SidebarController: NSObject, NSOutlineViewDataSource, NSOutlineViewD
     func outlineViewItemDidCollapse(_ notification: Notification) {
         outline.placeChevron(of: notification.userInfo?["NSObject"])
         showFolding(of: notification.userInfo?["NSObject"])
-        if let entry = notification.userInfo?["NSObject"] as? SidebarEntry, let key = entry.sectionKey {
+        if let entry = notification.userInfo?["NSObject"] as? SidebarEntry, case .todoNote(let url, _) = entry.kind {
+            collapsedTodoNotes.insert(url.path)
+            UserDefaults.standard.set(Array(collapsedTodoNotes), forKey: "collapsedTodoNotes")
+        } else if let entry = notification.userInfo?["NSObject"] as? SidebarEntry, let key = entry.sectionKey {
             collapsedSections.insert(key)
             UserDefaults.standard.set(Array(collapsedSections), forKey: "collapsedSections")
         } else {
@@ -636,7 +785,7 @@ final class SidebarController: NSObject, NSOutlineViewDataSource, NSOutlineViewD
         slide(node)
     }
 
-    /// A click on a section's header folds it or opens it again.
+    /// A click on a section's header, or on a note in To-dos, folds it or opens it again.
     func toggle(section entry: SidebarEntry) {
         slide(entry)
     }
@@ -784,7 +933,7 @@ final class SidebarController: NSObject, NSOutlineViewDataSource, NSOutlineViewD
     func fill(_ menu: NSMenu, row: Int) {
         menu.removeAllItems()
         let item = row >= 0 ? outline.item(atRow: row) : nil
-        if let entry = item as? SidebarEntry, entry.isSearch || entry.isOpenFolder { return }
+        if let entry = item as? SidebarEntry, entry.isSearch || entry.isOpenFolder || entry.isTodos { return }
         if let entry = item as? SidebarEntry, case .header(_, let locationID) = entry.kind, let locationID,
            let location = workspace.locations.first(where: { $0.id == locationID }) {
             add(menu, "New Note", "square.and.pencil") { [weak self] in self?.workspace.newNote(in: location.url) }
@@ -984,6 +1133,21 @@ final class SidebarOutlineView: NSOutlineView {
             controller?.workspace.chooseLocation(iCloud: false)
             return
         }
+        // A to-do's circle ticks it; its words open its note there. A note in To-dos folds as a folder does.
+        if row >= 0, let entry = item(atRow: row) as? SidebarEntry, case .todo(let todo) = entry.kind {
+            let cell = view(atColumn: 0, row: row, makeIfNecessary: false) as? SidebarFileCell
+            if let cell, cell.icon.frame.insetBy(dx: -5, dy: -5).contains(cell.convert(event.locationInWindow, from: nil)) {
+                controller?.tick(todo)
+            } else {
+                controller?.workspace.openTodo(todo.reference)
+            }
+            return
+        }
+        if row >= 0, let entry = item(atRow: row) as? SidebarEntry, case .todoNote = entry.kind,
+           !frameOfOutlineCell(atRow: row).insetBy(dx: -4, dy: -4).contains(point) {
+            controller?.toggle(section: entry)
+            return
+        }
         if row >= 0, let node = item(atRow: row) as? FileNode, node.isFolder,
            event.modifierFlags.intersection([.command, .shift]).isEmpty,
            !frameOfOutlineCell(atRow: row).insetBy(dx: -4, dy: -4).contains(point) {
@@ -1114,7 +1278,7 @@ final class SidebarOutlineView: NSOutlineView {
             frame.size.width = rowFrame.maxX - (frame.minX - rowFrame.minX) - frame.minX
             frame.origin.y = rowFrame.maxY - rowHeight
             frame.size.height = rowHeight
-        case .header:
+        case .header, .todoNote, .todo:
             break
         }
         return frame
@@ -1286,6 +1450,9 @@ final class SidebarHeaderCell: NSTableCellView {
     private var more: ((NSView) -> Void)?
     private var add: (() -> Void)?
     private var hideHidden: (() -> Void)?
+    /// To-dos' count of open to-dos, where a folder has its count.
+    private let count = NSTextField(labelWithString: "")
+    private var countEnd: NSLayoutConstraint!
     /// Folds or opens the section: what a click on the header does, offered to VoiceOver as an action, as the
     /// Show/Hide button was.
     var fold: (() -> Void)?
@@ -1318,8 +1485,14 @@ final class SidebarHeaderCell: NSTableCellView {
         foldArrow.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 9, weight: .semibold)
         foldArrow.contentTintColor = .tertiaryLabelColor
         foldArrow.translatesAutoresizingMaskIntoConstraints = false
-        for view in [moreButton, addButton, hiddenButton, foldArrow] { addSubview(view) }
+        count.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+        count.textColor = .secondaryLabelColor
+        count.alignment = .right
+        count.isHidden = true
+        count.translatesAutoresizingMaskIntoConstraints = false
+        for view in [moreButton, addButton, hiddenButton, foldArrow, count] { addSubview(view) }
         addEnd = addButton.trailingAnchor.constraint(equalTo: trailingAnchor)
+        countEnd = count.trailingAnchor.constraint(equalTo: trailingAnchor)
         NSLayoutConstraint.activate([
             label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 2),
             label.centerYAnchor.constraint(equalTo: centerYAnchor, constant: 1),
@@ -1334,6 +1507,8 @@ final class SidebarHeaderCell: NSTableCellView {
             hiddenButton.centerYAnchor.constraint(equalTo: label.centerYAnchor),
             hiddenButton.widthAnchor.constraint(equalToConstant: 20),
             hiddenButton.heightAnchor.constraint(equalToConstant: 20),
+            countEnd,
+            count.centerYAnchor.constraint(equalTo: label.centerYAnchor),
         ])
         updateFolding()
         updateButtons()
@@ -1350,6 +1525,13 @@ final class SidebarHeaderCell: NSTableCellView {
         addButton.toolTip = "New Note"
         addButton.setAccessibilityLabel("New Note in \(title)")
         updateButtons()
+    }
+
+    /// How many open to-dos there are, for To-dos; nil for a location.
+    func setCount(_ number: Int?) {
+        count.stringValue = number.map(String.init) ?? ""
+        count.isHidden = number == nil
+        setAccessibilityLabel(number.map { "\(label.stringValue), \($0)" })
     }
 
     /// The eye, while the location shows its hidden folders.
@@ -1386,6 +1568,11 @@ final class SidebarHeaderCell: NSTableCellView {
 
     override func layout() {
         HoverButtons.place(addEnd, in: self)
+        // Where a folder's count is: 8 pt before a file's cell, which ends 14 pt before the row.
+        if let row = superview {
+            let constant = -(22 - (row.bounds.maxX - frame.maxX))
+            if countEnd.constant != constant { countEnd.constant = constant }
+        }
         super.layout()
     }
 
@@ -1527,6 +1714,7 @@ final class SidebarFileCell: NSTableCellView {
         super.prepareForReuse()
         isHovered = false
         press = nil
+        setAccessibilityCustomActions(nil)
     }
 
     /// What a row that isn't selected does when VoiceOver presses it: Search's.
@@ -1602,6 +1790,7 @@ final class SidebarFileCell: NSTableCellView {
         count.isHidden = items == nil
         press = nil
         label.stringValue = name
+        label.lineBreakMode = .byTruncatingMiddle
         label.textColor = dimmed ? .tertiaryLabelColor : inCloud ? .secondaryLabelColor : .labelColor
         // As in Notes: large icons on a section's own rows, smaller ones inside a folder.
         icon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular, scale: nested ? .medium : .large)
@@ -1623,6 +1812,28 @@ final class SidebarFileCell: NSTableCellView {
         }
         toolTip = reminder.map { url.path + "\nReminder: " + $0.text } ?? url.path
         setAccessibilityLabel(reminder.map { "\(name), reminder \($0.text)" } ?? name)
+        updateButtons()
+    }
+
+    /// A to-do in To-dos: a circle to tick where a file has its icon, and its words. Ticked, the circle fills and the
+    /// words go grey for the moment before the row goes. One overdue has a red calendar where a note has its bell.
+    func configureTodo(_ words: String, isTicked: Bool, isOverdue overdue: Bool, nested: Bool) {
+        count.stringValue = ""
+        shownCount = false
+        count.isHidden = true
+        press = nil
+        label.stringValue = words
+        label.lineBreakMode = .byTruncatingTail
+        label.textColor = isTicked ? .tertiaryLabelColor : .labelColor
+        icon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular, scale: nested ? .medium : .large)
+        icon.alphaValue = 1
+        icon.image = NSImage(systemSymbolName: isTicked ? "checkmark.circle.fill" : "circle", accessibilityDescription: nil)
+        tint = isTicked ? .controlAccentColor : .tertiaryLabelColor
+        accessory.image = overdue && !isTicked ? NSImage(systemSymbolName: "calendar", accessibilityDescription: "Overdue") : nil
+        isOverdue = overdue
+        updateTint()
+        toolTip = words
+        setAccessibilityLabel(isTicked ? "\(words), done" : words)
         updateButtons()
     }
 

@@ -29,6 +29,9 @@ extension Workspace {
     /// The to-dos changed: their notifications follow a moment later, so a pause in typing doesn't schedule them
     /// again each time.
     func todosChanged() {
+        #if os(macOS)
+        sidebar?.todosChanged()
+        #endif
         watchForDueReminders()
         todoScheduling?.cancel()
         let work = DispatchWorkItem { [weak self] in self?.scheduleTodoNotifications() }
