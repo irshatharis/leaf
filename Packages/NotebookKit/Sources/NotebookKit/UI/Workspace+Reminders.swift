@@ -185,7 +185,6 @@ extension Workspace {
         sidebarRefreshRows()
         watchForDueReminders()
         if ids?.isEmpty != true { scheduleReminders(ids) }
-        publishWidgetTodos()
     }
 
     /// Schedules the notifications of the reminders to come (or only of `ids`), with the note's points read off the
@@ -257,8 +256,6 @@ extension Workspace {
                 self.updateReminderLine()
                 self.sidebarRefreshRows()
                 self.refreshTodoPills()
-                // At midnight the to-dos the widget is given go on by a day.
-                self.publishWidgetTodos()
                 self.watchForDueReminders()
             }
         }

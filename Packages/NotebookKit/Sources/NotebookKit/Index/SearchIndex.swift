@@ -98,8 +98,8 @@ public final class SearchIndex {
     @ObservationIgnored private var changedWhileBuilding = Set<URL>()
     @ObservationIgnored private var locations: [Location] = []
     /// Files kept on their own, outside every location (`Workspace+KeptFiles`): searched and linked to as files of a
-    /// place of their own, Files, as their section is called. Not in To-dos, Spotlight or the widgets, which take
-    /// the locations' notes.
+    /// place of their own, Files, as their section is called. Not in To-dos or Spotlight, which take the
+    /// locations' notes.
     @ObservationIgnored private(set) var files: [URL] = []
     /// The files kept on their own changed while the index was being built: read again once it is.
     @ObservationIgnored private var filesChangedWhileBuilding = false

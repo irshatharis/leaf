@@ -276,7 +276,6 @@ final class FolderTodosTests: XCTestCase {
         workspace.todoEditing = editing
         XCTAssertTrue(workspace.isBeingAdded(added))
         XCTAssertFalse(workspace.todoJobs().contains { FileNode.samePath(URL(fileURLWithPath: $0.path), yearNote) })
-        XCTAssertFalse(workspace.widgetTodoRows().contains { FileNode.samePath(URL(fileURLWithPath: $0.path), yearNote) })
         workspace.todoEditing = nil
         XCTAssertFalse(workspace.isBeingAdded(added))
         withExtendedLifetime(editing) {}

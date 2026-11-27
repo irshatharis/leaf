@@ -22,9 +22,7 @@ public struct NotebookScene: Scene {
                     DebugRemote.startIfRequested(workspace: workspace)
                     #endif
                 }
-                .onOpenURL { url in
-                    if !QuickCapture.open(url) { workspace.openFromOutside(url) }
-                }
+                .onOpenURL { workspace.openFromOutside($0) }
         }
         .commands { TouchCommands(workspace: workspace) }
         // Reminders set on another device: iOS doesn't wake the app for them, but gives it time now and then.

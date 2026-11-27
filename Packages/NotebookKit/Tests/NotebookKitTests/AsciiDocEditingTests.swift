@@ -289,9 +289,4 @@ final class AsciiDocFilesTests: XCTestCase {
         XCTAssertEqual(NotePoints.beginning(of: "= Concept\n:toc: left\n\n[.lead]\n*Short:* it works.\n\nNOTE: Read this.", title: "concept", syntax: .asciidoc),
                        "Short: it works.\nRead this.", "without a title that says the note's name")
     }
-
-    func testSharedLinksBecomeAsciiDoc() {
-        XCTAssertEqual(Workspace.sharedText("A page\n\n[Swift](https://swift.org) and <https://apple.com>", syntax: .asciidoc),
-                       "A page\n\nhttps://swift.org[Swift] and https://apple.com")
-    }
 }

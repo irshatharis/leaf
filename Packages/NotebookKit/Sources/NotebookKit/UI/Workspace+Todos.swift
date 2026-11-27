@@ -24,10 +24,6 @@ extension Workspace {
         // out would take its notification with it.
         todos.update(entries: index.byPathSnapshot, hidden: index.hiddenPaths, built: index.hasBuilt && !index.isBuilding)
         checkTodosFolder()
-        widgets.refresh?.cancel()
-        let work = DispatchWorkItem { [weak self] in self?.publishWidgetNotes(catalog: false) }
-        widgets.refresh = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: work)
     }
 
     /// The to-dos changed: their notifications follow a moment later, so a pause in typing doesn't schedule them
@@ -35,10 +31,7 @@ extension Workspace {
     func todosChanged() {
         watchForDueReminders()
         todoScheduling?.cancel()
-        let work = DispatchWorkItem { [weak self] in
-            self?.scheduleTodoNotifications()
-            self?.publishWidgetTodos()
-        }
+        let work = DispatchWorkItem { [weak self] in self?.scheduleTodoNotifications() }
         todoScheduling = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 1, execute: work)
     }
@@ -709,7 +702,7 @@ extension Workspace {
         // A run on the sample notes leaves no notification behind.
         if temporaryLocations, UserDefaults.standard.bool(forKey: "NotebookDemo") { return nil }
         #endif
-        let jobs = withoutWidgetTicks(todoJobs())
+        let jobs = todoJobs()
         // The to-dos in no note not read yet: their notifications, which To-dos doesn't know, stay as they are.
         let unread = todos.isLooseUnread ? looseTodos.url?.path : nil
         return ReminderNotifications.shared.scheduleTodos(jobs, open: Set(jobs.map(\.identifier)), keeping: unread)
@@ -777,7 +770,7 @@ extension TodoRemoval {
     }
 }
 
-/// What became of a change to a to-do, for what waits on it (a tick from a widget): written; nothing to change (done
+/// What became of a change to a to-do, for what waits on it: written; nothing to change (done
 /// already); not there to change (gone, changed since, or its note gone); or not written now, to be tried again.
 enum TodoChangeOutcome: Sendable {
     case written, unchanged, notThere, failed

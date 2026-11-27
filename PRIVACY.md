@@ -10,7 +10,7 @@ advertising, and it collects nothing about you.
 - **The folders you open** in Notebook are remembered on your device, with the permission to open them again (a
   security-scoped bookmark). On iPhone and iPad, notes you keep on the device are in Notebook's own folder, which the
   Files app shows under On My iPhone › Notebook.
-- **Favourites, recently opened files, the folders open in the sidebar and your settings** (typeface, text size,
+- **Recently opened files, the folders open in the sidebar and your settings** (typeface, text size,
   what the sidebar shows, the notebook on the app icon) are kept in the app's preferences on your device.
 - **When to ask for a rating:** the last few days you opened Notebook, and when it last asked you to rate it on the App
   Store, are kept in the app's preferences on your device. A rating you give goes to Apple, as for any app.
@@ -43,15 +43,6 @@ advertising, and it collects nothing about you.
 - **Home and Work**, once you choose them for reminders, are kept in the app's preferences and, in the App Store build,
   in iCloud's key-value store, for your other devices: each an address and its coordinates. Choosing one from Contacts
   opens Apple's own contact picker; Notebook sees only the address you tap and has no access to your contacts.
-- **What you share to Notebook** from another app's share sheet (text, a link, pictures, files) waits in a folder that
-  Notebook and its share extension share on your device, until Notebook has written it into your notes, and is then
-  deleted. For the share sheet to offer them, the name of your default folder and the place of the note you opened
-  last are kept there too.
-- **What the widgets show:** the to-dos due today, overdue or in the coming week, with the names of their notes, and
-  the text of the notes you chose to show in a Note widget, kept by Notebook in a folder it shares with its widgets on
-  your device, and a list of up to 500 of your notes' names and folders to choose from, none from folders you hid.
-  A to-do you tick in the widget waits there, with the reminders it took back, until Notebook has written the tick
-  into its note. It never leaves the device.
 - **The search index** of file names, the text of notes and PDFs, and the words Notebook reads in pictures, scanned
   pages and handwriting is kept in the app's caches on each device, so search is ready the moment the app opens. Each
   device builds its own from your files, and it never leaves the device.

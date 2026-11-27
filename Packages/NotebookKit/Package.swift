@@ -11,9 +11,6 @@ let package = Package(
         // inside it, so the app takes it from here and has it only once. The resources of NotebookKit and SwiftMath go
         // into it too (Config/notebookkit-resources.sh).
         .library(name: "NotebookKit", type: .dynamic, targets: ["NotebookKit", "NotebookCapture"]),
-        // What the widgets' and the share extension share with the app, without the rest of NotebookKit: the New Note
-        // intent. They link it statically, so they stay small.
-        .library(name: "NotebookCapture", targets: ["NotebookCapture"]),
     ],
     dependencies: [
         // Exact, as in Issues: its Mac images come out upside down and MermaidImage turns them round,

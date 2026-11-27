@@ -1,9 +1,9 @@
 import Foundation
 
 /// To-dos limited to a folder and the folders in it (`todosFolder`), from Show To-dos in a folder's menu. It is the same
-/// list with fewer rows: the count on its tile, the notifications and the widgets go on being about every to-do. A to-do
-/// added there goes into a note called To-dos in the folder, made the first time, so that it is in the list it was added
-/// to; in no note, as To-dos adds them otherwise, it would be in no folder.
+/// list with fewer rows: the notifications go on being about every to-do. A to-do added there goes into a note called
+/// To-dos in the folder, made the first time, so that it is in the list it was added to; in no note, as To-dos adds them
+/// otherwise, it would be in no folder.
 extension Workspace {
     /// What To-dos is called where the title of its page doesn't show: the toolbar once that has scrolled away, the window.
     var todosTitle: String {
@@ -85,8 +85,8 @@ extension Workspace {
         return outcome
     }
 
-    /// Whether a to-do is the one just added to a note and still has no words: it reminds of nothing yet, and no widget
-    /// shows it, as with one just added in no note.
+    /// Whether a to-do is the one just added to a note and still has no words: it reminds of nothing yet, as with one
+    /// just added in no note.
     func isBeingAdded(_ item: TodoList.Item) -> Bool {
         guard item.todo.text.isEmpty, item.todo.lines.isEmpty, let editing = todoEditing, editing.added != nil else { return false }
         return editing.shows(item)

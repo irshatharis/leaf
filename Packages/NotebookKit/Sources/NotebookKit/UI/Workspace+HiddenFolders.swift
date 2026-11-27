@@ -63,8 +63,6 @@ extension Workspace {
         }
         updateHiddenPaths()
         sidebarReloadAll()
-        // A note shown in a widget, or offered there, in a folder hidden now isn't.
-        publishWidgetNotes()
     }
 
     /// Where the hidden folders are on this device, for search and Move To to leave out.
