@@ -17,6 +17,14 @@ Tools/build.sh
 
 This installs `/Applications/Leaf.app` and links the `leaf` command into `~/.local/bin`.
 
+## Use
+
+- `leaf path/to/note.md` opens a note in the main window (in a window of its own when it is outside your folders).
+  A missing `.md` path is created first. `leaf some/folder` adds a folder to the sidebar.
+- ⌘P goes to a file, recently opened first. ⌘K runs a command. ⌥⌘F searches inside notes.
+- ⌘B toggles the sidebar, ⇧⌘B the outline. ⌘L makes a checklist, ⇧⌘L a link.
+- The header is hidden; move the pointer to the top edge to show it, or run Show Header from ⌘K to keep it.
+
 ## License
 
 GPL-3.0, the same as Notebook. See [LICENSE](LICENSE).

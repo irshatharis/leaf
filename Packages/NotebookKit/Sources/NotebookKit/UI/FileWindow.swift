@@ -75,7 +75,7 @@ public final class FileWindows {
             if FileNode.isFolder(url) {
                 Workspace.shared.openFolder(url)
             } else if FileKind(url: url, isDirectory: false) == .note {
-                open(url)
+                Workspace.shared.openFromOutside(url)
             }
         }
     }
@@ -350,8 +350,8 @@ final class PassThroughHostingView<Content: View>: NSHostingView<Content> {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
-/// Files opened from the Finder or dropped on the Dock icon open in windows of their own, folders in the sidebar, and notes
-/// picked in Spotlight in the main window.
+/// Notes opened from the Finder, the Dock icon or the leaf command open in the main window when they are in one of the
+/// locations, in windows of their own when not; folders open in the sidebar.
 public final class NotebookAppDelegate: NSObject, NSApplicationDelegate {
     /// Before a click on a reminder's notification, which can be what started the app, reaches it.
     public func applicationWillFinishLaunching(_ notification: Notification) {
@@ -413,4 +413,19 @@ private final class QuitReply {
         NoteDocument.whenAllWritten { NSApp.reply(toApplicationShouldTerminate: true) }
     }
 }
+@MainActor
+extension Workspace {
+    /// A note from outside the app: in the main window, brought to the front, when it is in a location; otherwise in a
+    /// window of its own. It waits for the locations to be looked up, as it can be what started the app.
+    func openFromOutside(_ url: URL) {
+        start()
+        whenSurveyed { [weak self] in
+            guard let self else { return }
+            guard location(containing: url) != nil else { return FileWindows.shared.open(url) }
+            inMainWindow { [weak self] in self?.open(url) }
+            NSApp.activate()
+        }
+    }
+}
+
 #endif
