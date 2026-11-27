@@ -13,3 +13,4 @@ fastlane/.env.secret
 fastlane/report.xml
 fastlane/Preview.html
 vendor/
+build-bench/

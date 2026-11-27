@@ -255,20 +255,19 @@ final class MarkdownTextView: NSTextView {
 
     // MARK: - Caret
 
-    /// A caret as tall as the text it is in, not as the line, which is taller than the font.
-    override func drawInsertionPoint(in rect: NSRect, color: NSColor, turnedOn flag: Bool) {
-        let caret = controller?.caretRect(proposed: rect) ?? rect
-        if flag {
-            color.setFill()
-            NSBezierPath(roundedRect: NSRect(x: caret.minX, y: caret.minY, width: 2, height: caret.height), xRadius: 1, yRadius: 1).fill()
-        } else {
-            super.drawInsertionPoint(in: rect.union(NSRect(x: caret.minX, y: caret.minY, width: 2, height: caret.height)), color: color, turnedOn: false)
-        }
+    /// AppKit's caret is a view of its own, which blinks without the text under it being drawn again: drawing the
+    /// caret in the text instead kept three window-sized buffers in the GPU for as long as the note had the focus.
+    /// It is made as tall as the text it is in, not as the line, which is taller than the font.
+    override func updateInsertionPointStateAndRestartTimer(_ restartFlag: Bool) {
+        super.updateInsertionPointStateAndRestartTimer(restartFlag)
+        guard let controller, let indicator = subviews.first(where: { $0 is NSTextInsertionIndicator }) else { return }
+        let proposed = indicator.frame
+        let caret = controller.caretRect(proposed: proposed)
+        indicator.frame = NSRect(x: caret.minX, y: caret.minY, width: proposed.width, height: caret.height)
     }
 
-    /// Whatever the text system draws again is drawn across the whole width and a little above and below: the caret is
-    /// wider than AppKit's, the heading's level and signs are drawn in the margin, and the boxes round code and
-    /// callouts reach out of their lines. Once, the whole view was drawn again on every move of the caret, which hid
+    /// Whatever the text system draws again is drawn across the whole width and a little above and below: the heading's
+    /// level and signs are drawn in the margin, and the boxes round code and callouts reach out of their lines. Once, the whole view was drawn again on every move of the caret, which hid
     /// what was left behind.
     override func setNeedsDisplay(_ rect: NSRect, avoidAdditionalLayout flag: Bool) {
         guard !rect.isEmpty else { return super.setNeedsDisplay(rect, avoidAdditionalLayout: flag) }
