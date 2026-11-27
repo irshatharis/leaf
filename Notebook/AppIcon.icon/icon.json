@@ -1,149 +1,19 @@
 {
-  "fill-specializations": [
+  "fill" : {
+    "linear-gradient" : [
+      "srgb:0.36078,0.66275,0.34118,1.00000",
+      "srgb:0.15686,0.40784,0.18039,1.00000"
+    ],
+    "orientation" : { "start" : { "x" : 0.5, "y" : 0 }, "stop" : { "x" : 0.5, "y" : 1 } }
+  },
+  "groups" : [
     {
-      "value": {
-        "linear-gradient": [
-          "srgb:0.65882,0.25098,0.24706,1.00000",
-          "srgb:0.42353,0.11373,0.10980,1.00000"
-        ],
-        "orientation": {
-          "start": {
-            "x": 0.5,
-            "y": 0
-          },
-          "stop": {
-            "x": 0.5,
-            "y": 1
-          }
-        }
-      }
-    },
-    {
-      "appearance": "dark",
-      "value": {
-        "linear-gradient": [
-          "srgb:0.59216,0.22745,0.22353,1.00000",
-          "srgb:0.36078,0.09412,0.09020,1.00000"
-        ],
-        "orientation": {
-          "start": {
-            "x": 0.5,
-            "y": 0
-          },
-          "stop": {
-            "x": 0.5,
-            "y": 1
-          }
-        }
-      }
+      "layers" : [
+        { "glass" : true, "image-name" : "leaf.svg", "name" : "leaf" }
+      ],
+      "shadow" : { "kind" : "neutral", "opacity" : 0.5 },
+      "translucency" : { "enabled" : false, "value" : 0.4 }
     }
   ],
-  "groups": [
-    {
-      "name": "Ribbon",
-      "layers": [
-        {
-          "name": "ribbon",
-          "glass": true,
-          "image-name-specializations": [
-            {
-              "value": "ribbon-light.png"
-            },
-            {
-              "value": "ribbon-dark.png",
-              "appearance": "dark"
-            },
-            {
-              "value": "ribbon-tinted.png",
-              "appearance": "tinted"
-            }
-          ]
-        }
-      ],
-      "shadow": {
-        "kind": "neutral",
-        "opacity": 0.45
-      },
-      "translucency": {
-        "enabled": false,
-        "value": 0.4
-      }
-    },
-    {
-      "name": "Band",
-      "layers": [
-        {
-          "name": "band",
-          "glass": true,
-          "image-name-specializations": [
-            {
-              "value": "band-light.png"
-            },
-            {
-              "value": "band-dark.png",
-              "appearance": "dark"
-            },
-            {
-              "value": "band-tinted.png",
-              "appearance": "tinted"
-            }
-          ]
-        }
-      ],
-      "shadow": {
-        "kind": "neutral",
-        "opacity": 0.35
-      },
-      "translucency": {
-        "enabled": false,
-        "value": 0.4
-      }
-    },
-    {
-      "name": "Cover",
-      "layers": [
-        {
-          "name": "cover-detail",
-          "glass": false,
-          "image-name-specializations": [
-            {
-              "value": "cover-detail-light.png"
-            },
-            {
-              "value": "cover-detail-dark.png",
-              "appearance": "dark"
-            }
-          ]
-        },
-        {
-          "name": "cover",
-          "glass": true,
-          "image-name-specializations": [
-            {
-              "value": "cover-light.png"
-            },
-            {
-              "value": "cover-dark.png",
-              "appearance": "dark"
-            },
-            {
-              "value": "cover-tinted.png",
-              "appearance": "tinted"
-            }
-          ]
-        }
-      ],
-      "shadow": {
-        "kind": "neutral",
-        "opacity": 0.55
-      },
-      "translucency": {
-        "enabled": false,
-        "value": 0.4
-      }
-    }
-  ],
-  "supported-platforms": {
-    "squares": "shared"
-  }
+  "supported-platforms" : { "squares" : "shared" }
 }

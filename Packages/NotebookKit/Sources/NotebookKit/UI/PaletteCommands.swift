@@ -244,14 +244,7 @@ extension Workspace {
                 settings.typography.width = width
             })
         }
-        list.append(PaletteCommand(id: "pictures", title: settings.readsTextInPictures ? "Stop Finding Text in Pictures" : "Find Text in Pictures",
-                                   symbol: "text.viewfinder", section: settingsSection, keywords: ["ocr", "handwriting", "scan", "live text"]) {
-            settings.readsTextInPictures.toggle()
-        })
         #if os(macOS)
-        list.append(PaletteCommand(id: "app-icon", title: "App Icon…", symbol: "book.closed", section: settingsSection, keywords: ["leather", "dock"]) {
-            actions.openSettings("icon")
-        })
         list.append(PaletteCommand(id: "settings", title: "Settings…", symbol: "gearshape", section: settingsSection, keys: ["⌘", ","],
                                    keywords: ["preferences"]) {
             actions.openSettings(nil)

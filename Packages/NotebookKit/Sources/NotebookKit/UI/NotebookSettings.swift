@@ -149,13 +149,6 @@ public final class NotebookSettings {
         }
     }
 
-    /// Search finds the words in pictures, scans and handwriting, which Notebook reads in the background.
-    public var readsTextInPictures: Bool {
-        didSet {
-            UserDefaults.standard.set(readsTextInPictures, forKey: "readsTextInPictures")
-            Workspace.shared.readTextInPictures(readsTextInPictures)
-        }
-    }
 
     /// To-dos at the top of the sidebar, and the reminders of to-dos with a date, a time or a place. Off for those who
     /// keep their to-dos in another app.
@@ -254,7 +247,6 @@ public final class NotebookSettings {
         }
         headingMarks = Self.headingMarks(in: defaults)
         editsTablesAsMarkdown = defaults.bool(forKey: "editsTablesAsMarkdown")
-        readsTextInPictures = defaults.object(forKey: "readsTextInPictures") as? Bool ?? true
         deletesEmptyNotes = defaults.object(forKey: "deletesEmptyNewNotes") as? Bool ?? true
         // Not `as? Bool`: given on the command line, as the UI tests do, it is text.
         asksBeforeDeletingNotes = defaults.object(forKey: "asksBeforeDeletingNotes") == nil || defaults.bool(forKey: "asksBeforeDeletingNotes")

@@ -404,13 +404,6 @@ public final class NotebookAppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// A note picked in Spotlight, or its Search in App, also when that is what started the app.
-    public func application(_ application: NSApplication, continue userActivity: NSUserActivity,
-                            restorationHandler: @escaping ([any NSUserActivityRestoring]) -> Void) -> Bool {
-        MainActor.assumeIsolated {
-            Workspace.shared.continueActivity(userActivity)
-        }
-    }
 }
 
 /// Lets quitting go on once, when the to-dos are written or the wait for them is over, and the notes are written.

@@ -23,8 +23,6 @@
 	<string>Leaf finds where you are when you choose Current Location for a reminder.</string>
 	<key>NotebookAppGroup</key>
 	<string>$(NOTEBOOK_APP_GROUP)</string>
-	<key>CoreSpotlightContinuation</key>
-	<true/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

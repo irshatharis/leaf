@@ -8,7 +8,6 @@ public struct NotebookScene: Scene {
     @State private var settings = NotebookSettings.shared
 
     public init() {
-        AppIconTip.configure()
         ReminderNotifications.activate()
     }
 
@@ -17,7 +16,6 @@ public struct NotebookScene: Scene {
             RootView()
                 .onAppear {
                     workspace.start()
-                    AppIconStore.shared.start()
                     #if DEBUG
                     DebugRemote.startIfRequested(workspace: workspace)
                     #endif
@@ -326,7 +324,6 @@ struct SettingsView: View {
             Tab("General", systemImage: "gearshape", value: "general") { GeneralSettings(workspace: workspace) }
             Tab("Text", systemImage: "textformat", value: "text") { TextSettings() }
             Tab("Sidebar", systemImage: "sidebar.left", value: "sidebar") { SidebarSettings() }
-            Tab("App Icon", systemImage: "book.closed", value: "icon") { AppIconSettings() }
         }
         .frame(width: 540, height: 460)
     }
@@ -379,10 +376,6 @@ struct GeneralSettings: View {
                     Text(workspace.index.isBuilding ? "Reading your files…" : "\(workspace.index.count) files")
                         .foregroundStyle(.secondary)
                 }
-                Toggle("Find text in pictures and handwriting", isOn: Bindable(NotebookSettings.shared).readsTextInPictures)
-                Text("Leaf reads the words in pictures, scanned PDFs and drawings on this Mac, in the background, so search finds them.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

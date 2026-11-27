@@ -65,7 +65,6 @@ extension Workspace {
         sidebarReloadAll()
         // A note shown in a widget, or offered there, in a folder hidden now isn't.
         publishWidgetNotes()
-        spotlight?.setNeedsUpdate()
     }
 
     /// Where the hidden folders are on this device, for search and Move To to leave out.

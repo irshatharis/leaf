@@ -25,7 +25,6 @@ public struct NotebookScene: Scene {
                 .onOpenURL { url in
                     if !QuickCapture.open(url) { workspace.openFromOutside(url) }
                 }
-                .continuesSpotlight(workspace)
         }
         .commands { TouchCommands(workspace: workspace) }
         // Reminders set on another device: iOS doesn't wake the app for them, but gives it time now and then.
@@ -363,7 +362,6 @@ struct TouchSettings: View {
                     LabeledContent("Indexed") {
                         Text(workspace.index.isBuilding ? "Reading your files…" : "\(workspace.index.count) files")
                     }
-                    Toggle("Find Text in Pictures", isOn: Bindable(NotebookSettings.shared).readsTextInPictures)
                 } header: {
                     Text("Search")
                 } footer: {

@@ -33,8 +33,6 @@ let package = Package(
                 .product(name: "BeautifulMermaid", package: "beautiful-mermaid-swift"),
                 .product(name: "SwiftMath", package: "SwiftMath"),
             ],
-            // Passes of the app icon's notebook, made by Tools/AppIcon/make.sh.
-            resources: [.copy("Resources/NotebookIcon")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         // Settings and a folder of each test run's own, as the tests are loaded: every `swift test` on a Mac runs as

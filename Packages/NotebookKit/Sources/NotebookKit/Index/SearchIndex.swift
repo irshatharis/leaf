@@ -80,11 +80,6 @@ public final class SearchIndex {
     @ObservationIgnored private var corpusWanted = false
     /// Searches showing their results, to be run again on a new corpus.
     @ObservationIgnored private var corpusObservers: [WeakSearch] = []
-    /// The text read in pictures, scans and drawings, by the file's address (for a picture in a note,
-    /// `folder/.assets/name`).
-    @ObservationIgnored var recognized: [String: PictureText] = [:] {
-        didSet { changed(notes: false) }
-    }
     /// Counts the times folders came or went, which is far less often than files change.
     private(set) var folderVersion = 0
     /// Called when folders came or went.
@@ -233,7 +228,7 @@ public final class SearchIndex {
         filesChangedWhileBuilding = false
         pdfQueue = []
         let roots = locations.flatMap { location in location.folders.map { ($0.url, $0.place, location.id) } }
-        let hidden = hiddenPaths, recognized = self.recognized, version = self.version
+        let hidden = hiddenPaths, version = self.version
         let current = byPath
         let kept = hasBuilt ? nil : self.kept
         #if DEBUG
@@ -258,7 +253,7 @@ public final class SearchIndex {
                     // A whole iCloud Drive takes a while: search finds what has been read so far in the meantime, unless
                     // it has all there was the last time.
                     if known.isEmpty, CACurrentMediaTime() - shown > 1.5 {
-                        let partial = SearchCorpus(version: version, entries: found.byPath.values, hidden: hidden, recognized: recognized)
+                        let partial = SearchCorpus(version: version, entries: found.byPath.values, hidden: hidden)
                         Task { @MainActor in
                             // Only before the index has anything: the last full one beats part of a new one.
                             guard generation == self.generation, self.isBuilding, self.byPath.isEmpty else { return }
@@ -1012,9 +1007,9 @@ public final class SearchIndex {
         corpusWanted = true
         guard corpusTask == nil else { return }
         corpusWanted = false
-        let version = version, entries = byPath, hidden = hiddenPaths, recognized = recognized
+        let version = version, entries = byPath, hidden = hiddenPaths
         corpusTask = Task.detached(priority: .userInitiated) { [weak self] in
-            let corpus = SearchCorpus(version: version, entries: entries.values, hidden: hidden, recognized: recognized)
+            let corpus = SearchCorpus(version: version, entries: entries.values, hidden: hidden)
             await self?.made(corpus, fromNothing: entries.isEmpty)
         }
     }
@@ -1030,7 +1025,7 @@ public final class SearchIndex {
     /// tests and the few answers that can't wait; search itself takes `corpus` as it is.
     func currentCorpus() -> SearchCorpus {
         if corpus.version != version {
-            show(SearchCorpus(version: version, entries: byPath.values, hidden: hiddenPaths, recognized: recognized))
+            show(SearchCorpus(version: version, entries: byPath.values, hidden: hiddenPaths))
         }
         return corpus
     }

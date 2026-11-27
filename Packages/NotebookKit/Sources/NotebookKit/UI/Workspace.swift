@@ -64,8 +64,6 @@ public final class Workspace: NSObject {
     @ObservationIgnored let looseTodos = LooseTodos(place: LooseTodos.defaultPlace)
     /// New To-do in the toolbar, for To-dos to add one for today.
     var newTodoRequest = 0
-    /// The notes in Spotlight, fed from what search knows; nil when Spotlight doesn't get them (`startSpotlight`).
-    @ObservationIgnored var spotlight: SpotlightIndex?
     /// Words to search for in ⌘K as it opens: Spotlight's Search in App.
     var paletteStart: (query: String, id: UUID)?
     /// Counts the reminders whose time came, so what shows them turns red then, without anything else changing.
@@ -105,8 +103,6 @@ public final class Workspace: NSObject {
     /// Search on iPhone and iPad: one field is out at a time. The Mac searches in ⌘K.
     @ObservationIgnored lazy var searchSession = SearchSession(workspace: self)
     #endif
-    /// Reads the text in pictures, scans and drawings for search.
-    @ObservationIgnored lazy var recognizer = TextRecognizer(index: index)
     /// ⌘K, over the window.
     var palette: PaletteMode?
     /// What ⌘K finds.
@@ -330,18 +326,15 @@ public final class Workspace: NSObject {
             // Notes moved in the Finder can be found by their names now.
             self?.scheduleReminders()
             self?.indexChanged()
-            self?.spotlight?.setNeedsUpdate()
         }
         index.onFoldersChanged = { [weak self] in self?.prepareMoveFolders() }
         index.onChanged = { [weak self] in
             self?.indexChanged()
-            self?.spotlight?.setNeedsUpdate()
         }
         todos.onChange = { [weak self] in self?.todosChanged() }
         looseTodos.onRead = { [weak self] in self?.todos.update(loose: $0) }
         looseTodos.onUnread = { [weak self] in self?.todos.looseUnread() }
         index.onRefreshed = { [weak self] in self?.refreshLinks() }
-        index.onIndexed = { [weak self] entries in self?.recognizer.consider(entries) }
         #if os(macOS)
         pages.workspace = self
         #else
@@ -444,12 +437,10 @@ public final class Workspace: NSObject {
         // The index kept from the last run is read while the locations are looked up, for search to have it all at once.
         index.storeURL = SearchIndex.storeURL(library: temporaryLocations ? locations.first?.url.path : nil)
         index.loadKept(for: locations)
-        startSpotlight()
         todos.waitsForLoose = true
         looseTodos.start()
         hidden.onChange = { [weak self] in self?.hiddenFoldersChanged() }
         reminders.onChange = { [weak self] in self?.remindersChanged() }
-        readTextInPictures(NotebookSettings.shared.readsTextInPictures)
         watchForDueReminders()
         tellAboutUnsavedNotes()
         let last = temporaryLocations ? nil : UserDefaults.standard.string(forKey: "lastOpened").map(Self.rerooted)
@@ -980,17 +971,6 @@ public final class Workspace: NSObject {
     func find(in url: URL) -> PDFFind? {
         guard let pdfFind, pdfFind.url == url.standardizedFileURL else { return nil }
         return pdfFind.find
-    }
-
-    /// Reading the text in pictures, scans and drawings, or not, from Settings.
-    func readTextInPictures(_ reads: Bool) {
-        // Never in tests: they make pictures of their own and look at search before it could have read them.
-        guard reads, !ProcessInfo.isTesting else {
-            recognizer.stop()
-            return
-        }
-        recognizer.start()
-        if !index.isBuilding { recognizer.consider(index.byPathSnapshot) }
     }
 
     public func open(_ url: URL, recordHistory: Bool = true, focusTitle: Bool = false) {

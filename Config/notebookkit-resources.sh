@@ -33,6 +33,8 @@ i=0
 while [ "$i" -lt "$SCRIPT_INPUT_FILE_COUNT" ]; do
     eval "input=\$SCRIPT_INPUT_FILE_$i"
     i=$((i + 1))
+    [ -e "$input" ] || continue
+    [ -e "$input" ] || continue
     case "$input" in
     *.bundle)
         if $app; then

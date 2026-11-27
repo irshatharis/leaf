@@ -69,11 +69,10 @@ final class SearchCorpus: Sendable {
     private let headingStarts: [Int]
     let headings: [Heading]
 
-    static let empty = SearchCorpus(version: -1, entries: [], hidden: [], recognized: [:])
+    static let empty = SearchCorpus(version: -1, entries: [], hidden: [])
 
-    /// Made from the index's entries, leaving out what is in hidden folders, with the text read in pictures, scans and
-    /// drawings (by the file's address; a picture in a note by `folder/.assets/name`).
-    init(version: Int, entries: some Collection<SearchIndex.Entry>, hidden: [String], recognized: [String: PictureText]) {
+    /// Made from the index's entries, leaving out what is in hidden folders.
+    init(version: Int, entries: some Collection<SearchIndex.Entry>, hidden: [String]) {
         self.version = version
         var items: [Item] = []
         items.reserveCapacity(entries.count)
@@ -94,15 +93,6 @@ final class SearchCorpus: Sendable {
             names.append(10)
             if let text = entry.text, let folded = entry.folded {
                 documents.append((modified, Document(item: index, text: text, folded: folded, source: .text)))
-            }
-            if let read = recognized[entry.path], !read.text.isEmpty {
-                documents.append((modified, Document(item: index, text: read.text, folded: read.folded,
-                                                     source: entry.kind == .pdf ? .scan : .picture(asset: nil))))
-            }
-            for asset in entry.assets {
-                guard let read = recognized[entry.folder + "/.assets/" + asset], !read.text.isEmpty else { continue }
-                let source: Source = read.isHandwriting ? .drawing(asset: asset) : .picture(asset: asset)
-                documents.append((modified, Document(item: index, text: read.text, folded: read.folded, source: source)))
             }
             for heading in entry.headings {
                 let folded = SearchIndex.fold(heading.title)

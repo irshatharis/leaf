@@ -36,10 +36,7 @@ struct MainView: View {
 
     var body: some View {
         NavigationSplitView(columnVisibility: $workspace.columnVisibility) {
-            VStack(spacing: 0) {
-                SidebarOutline(workspace: workspace)
-                SidebarTips()
-            }
+            SidebarOutline(workspace: workspace)
             .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 400)
         } detail: {
             DetailColumn(workspace: workspace)
