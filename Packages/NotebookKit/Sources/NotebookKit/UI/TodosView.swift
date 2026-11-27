@@ -21,8 +21,8 @@ struct TodosView: View {
     @State private var editing: TodoEditing?
     /// The to-do just edited, while its buttons go: then its row shows it as it is now.
     @State private var closing: TodoEditing?
-    @FocusState private var focus: TodoFocus?
     #if os(iOS)
+    @FocusState private var focus: TodoFocus?
     /// What shows of the list above the keyboard, and where the to-do being edited is in it.
     @State private var shown: ClosedRange<CGFloat>?
     @State private var editingFrame: CGRect?
@@ -37,7 +37,17 @@ struct TodosView: View {
     /// The row selected, as in Reminders: by a click beside a to-do's words, or left so by Return or Escape. Delete
     /// deletes it, Return edits it, ↑ and ↓ select the next.
     @State private var selected: String?
-    @FocusState private var isListFocused: Bool
+    /// The table has the keyboard: the row selected shows in the accent colour, and the keys are its.
+    @State private var isListFocused = false
+    /// Where the keyboard is in the to-do being edited. The row being edited is SwiftUI in a cell of the table, with
+    /// its own focus (`TodoEditingRow`), which follows this.
+    @State private var focusBox = TodoFocusBox()
+    private var focus: TodoFocus? {
+        get { focusBox.value }
+        nonmutating set { focusBox.value = newValue }
+    }
+    /// A row to scroll to: one just added, or the next one selected with ↑ or ↓.
+    @State private var scrollRequest: TodosScrollRequest?
     #endif
 
     var body: some View {
@@ -51,67 +61,7 @@ struct TodosView: View {
     }
 
     private func list(_ proxy: ScrollViewProxy) -> some View {
-        let sections = shownSections
-        let editingRow = rowID(of: editing, in: sections)
-        let closingRow = rowID(of: closing, in: sections)
-        return ScrollView {
-            // Lazy: of hundreds of to-dos only those that show are made. A group's name, its rows and its New To-do are
-            // rows of the list side by side, not a group of their own, which would be made whole.
-            LazyVStack(alignment: .leading, spacing: 0) {
-                header
-                if sections.isEmpty {
-                    if workspace.todos.isReady { emptyState(proxy) }
-                } else {
-                    ForEach(sections) { section in
-                        sectionTitle(section)
-                        ForEach(section.rows.map { TodoSlot(row: $0, editing: $0.id == editingRow ? editing : $0.id == closingRow ? closing : nil) }) { slot in
-                            rowView(slot, in: section, proxy: proxy)
-                        }
-                        if section.kind != .overdue, !section.rows.isEmpty {
-                            NewTodoButton(section: section) { newTodo(in: section.kind, proxy: proxy) }
-                                .modifier(part(section.kind, id: "new", last: true))
-                        }
-                    }
-                }
-            }
-            .animation(Theme.spring, value: sections.map { $0.rows.map(\.id) })
-            .frame(maxWidth: Self.width, alignment: .leading)
-            .padding(.horizontal, Self.margin)
-            .padding(.bottom, 60)
-            .frame(maxWidth: .infinity)
-            .coordinateSpace(.named(Self.space))
-            #if os(iOS)
-            .id(typeSize)
-            #endif
-            // A click beside the to-dos is done editing.
-            .background {
-                Color.clear
-                    .contentShape(.rect)
-                    .onTapGesture { endEditing() }
-            }
-            #if os(macOS)
-            .focusable(interactions: .edit)
-            .focused($isListFocused)
-            .focusEffectDisabled()
-            .onKeyPress(phases: .down) { listKey($0, proxy) }
-            .onDeleteCommand { deleteSelected() }
-            .onChange(of: isListFocused) { _, focused in
-                if !focused, focus == nil { selected = nil }
-            }
-            #endif
-        }
-        .scrollContentBackground(.hidden)
-        .background(Color.theme(Theme.panel).ignoresSafeArea())
-        // The title goes up into the toolbar, as a note's does.
-        .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 70 } action: { _, away in
-            workspace.todosTitleScrolled(away: away)
-        }
-        .onDragSessionUpdated { session in
-            switch session.phase {
-            case .initial, .active: if !isDragging { withAnimation(Theme.quick) { isDragging = true } }
-            default: withAnimation(Theme.quick) { isDragging = false }
-            }
-        }
+        scroller(proxy)
         .onChange(of: focus) { _, new in focusChanged(new) }
         .onChange(of: editing?.focusRequest) { applyFocus() }
         // New To-do in the toolbar: one for today.
@@ -163,6 +113,157 @@ struct TodosView: View {
         #endif
         #endif
     }
+
+    #if os(iOS)
+    private func scroller(_ proxy: ScrollViewProxy) -> some View {
+        let sections = shownSections
+        let editingRow = rowID(of: editing, in: sections)
+        let closingRow = rowID(of: closing, in: sections)
+        return ScrollView {
+            // Lazy: of hundreds of to-dos only those that show are made. A group's name, its rows and its New To-do are
+            // rows of the list side by side, not a group of their own, which would be made whole.
+            LazyVStack(alignment: .leading, spacing: 0) {
+                header
+                if sections.isEmpty {
+                    if workspace.todos.isReady { emptyState(proxy) }
+                } else {
+                    ForEach(sections) { section in
+                        sectionTitle(section)
+                        ForEach(section.rows.map { TodoSlot(row: $0, editing: $0.id == editingRow ? editing : $0.id == closingRow ? closing : nil) }) { slot in
+                            rowView(slot, in: section, proxy: proxy)
+                        }
+                        if section.kind != .overdue, !section.rows.isEmpty {
+                            NewTodoButton(section: section) { newTodo(in: section.kind, proxy: proxy) }
+                                .modifier(part(section.kind, id: "new", last: true))
+                        }
+                    }
+                }
+            }
+            .animation(Theme.spring, value: sections.map { $0.rows.map(\.id) })
+            .frame(maxWidth: Self.width, alignment: .leading)
+            .padding(.horizontal, Self.margin)
+            .padding(.bottom, 60)
+            .frame(maxWidth: .infinity)
+            .coordinateSpace(.named(Self.space))
+            .id(typeSize)
+            // A tap beside the to-dos is done editing.
+            .background {
+                Color.clear
+                    .contentShape(.rect)
+                    .onTapGesture { endEditing() }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Color.theme(Theme.panel).ignoresSafeArea())
+        // The title goes up into the bar, as a note's does.
+        .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 70 } action: { _, away in
+            workspace.todosTitleScrolled(away: away)
+        }
+        .onDragSessionUpdated { session in
+            switch session.phase {
+            case .initial, .active: if !isDragging { withAnimation(Theme.quick) { isDragging = true } }
+            default: withAnimation(Theme.quick) { isDragging = false }
+            }
+        }
+    }
+    #else
+    /// A table of AppKit rows: SwiftUI's lists of hundreds of to-dos dropped frames as they scrolled, its own rows
+    /// cut down to a circle and words too. Only the to-do being edited is SwiftUI, in its row (`TodoEditingRow`).
+    private func scroller(_ proxy: ScrollViewProxy) -> some View {
+        let sections = shownSections
+        return Group {
+            if sections.isEmpty {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        header
+                        if workspace.todos.isReady { emptyState(proxy) }
+                    }
+                    .frame(maxWidth: Self.width, alignment: .leading)
+                    .padding(.horizontal, Self.margin)
+                    .frame(maxWidth: .infinity)
+                }
+                .scrollContentBackground(.hidden)
+            } else {
+                TodosTable(workspace: workspace, model: tableModel(sections), actions: tableActions(proxy))
+            }
+        }
+        .background(Color.theme(Theme.panel).ignoresSafeArea())
+    }
+
+    private func tableModel(_ sections: [TodoSection]) -> TodosTableModel {
+        let editingRow = rowID(of: editing, in: sections)
+        let closingRow = rowID(of: closing, in: sections)
+        var rows: [TodosTableRow] = [.header]
+        for section in sections {
+            rows.append(.title(section.kind, isEmpty: section.rows.isEmpty))
+            for row in section.rows {
+                rows.append(.todo(row, section.kind, editing: row.id == editingRow ? editing : row.id == closingRow ? closing : nil))
+            }
+            if section.kind != .overdue, !section.rows.isEmpty { rows.append(.newTodo(section.kind)) }
+        }
+        rows.append(.end)
+        return TodosTableModel(rows: rows, ticked: Set(ticked.keys), selected: selected, isListFocused: isListFocused,
+                               dropTarget: dropTargets.values.first, folder: workspace.todosFolder, scroll: scrollRequest)
+    }
+
+    private func tableActions(_ proxy: ScrollViewProxy) -> TodosTableActions {
+        TodosTableActions(
+            header: { AnyView(header.frame(maxWidth: .infinity, alignment: .leading)) },
+            editingRow: { row, kind, session in
+                AnyView(TodoEditingRow(workspace: workspace, row: row, section: kind, isTicked: ticked[row.id] != nil, editing: session,
+                                       focusBox: focusBox) {
+                    tick(row, in: kind)
+                } edit: { item, offset in
+                    startEditing(item, at: offset)
+                } endEditing: {
+                    endEditing(selecting: true)
+                } returned: {
+                    returned(proxy)
+                } delete: {
+                    delete(row)
+                })
+            },
+            tick: { tick($0, in: $1) },
+            edit: { startEditing($0, at: $1) },
+            open: { row in
+                endEditing()
+                workspace.open(row)
+            },
+            ask: { row, view, rect in
+                switch row {
+                case .todo(let item): workspace.askForTodoReminder(item.reference, from: view, rect: rect)
+                case .note(let note): if let url = note.url { workspace.askForReminder(url, from: view) } else { beep() }
+                }
+            },
+            menu: { row, kind, ask in
+                TodoRowMenu(workspace: workspace, row: row, isTicked: ticked[row.id] != nil) {
+                    tick(row, in: kind)
+                } open: {
+                    endEditing()
+                    workspace.open(row)
+                } moveToNote: {
+                    guard case .todo(let item) = row else { return }
+                    endEditing()
+                    workspace.palette = .moveTodo(workspace.current(item.reference))
+                } ask: {
+                    ask()
+                } delete: {
+                    delete(row)
+                }.entries
+            },
+            select: { select($0) },
+            newTodo: { newTodo(in: $0, proxy: proxy) },
+            endEditing: { endEditing() },
+            key: { listKey($0) },
+            focused: { isListFocused = $0 },
+            dragging: { isDragging = $0 },
+            target: { kind in dropTargets = kind.map { ["table": $0] } ?? [:] },
+            drop: { drop($0, into: $1) },
+            scrolledAway: { workspace.todosTitleScrolled(away: $0) },
+            editingFrame: { frame in if editing?.isEnded == false { editingFrame = frame } }
+        )
+    }
+    #endif
 
     #if os(iOS)
     /// What the list has on iPhone and iPad: the bar above the keyboard, New To-do at the bottom, Shake to Undo, and
@@ -436,7 +537,11 @@ struct TodosView: View {
         guard let item = added else { return }
         startEditing(item, at: nil, added: kind)
         DispatchQueue.main.async {
+            #if os(macOS)
+            scrollRequest = TodosScrollRequest(item.id)
+            #else
             withAnimation(Theme.spring) { proxy.scrollTo(item.id, anchor: UnitPoint(x: 0.5, y: 0.6)) }
+            #endif
         }
     }
 
@@ -563,6 +668,7 @@ struct TodosView: View {
 
     // MARK: - Groups
 
+    #if os(iOS)
     /// A group's name, and while a row is dragged and the group is empty, what dropping it there does.
     private func sectionTitle(_ section: TodoSection) -> some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -577,7 +683,7 @@ struct TodosView: View {
                 .onTapGesture { endEditing() }
                 .accessibilityAddTraits(.isHeader)
             if section.rows.isEmpty {
-                Text(dropHint(section.kind))
+                Text(Self.dropHint(section.kind))
                     .font(.system(size: 13))
                     .foregroundStyle(Color.theme(Theme.textTertiary))
                     .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
@@ -602,32 +708,13 @@ struct TodosView: View {
             } delete: {
                 delete(slot.row)
             }
-            #if os(iOS)
             .modifier(TodoSwipe(id: slot.row.id, swiped: $swiped, isEnabled: slot.editing == nil && slot.row.isTodo && ticked[slot.row.id] == nil) {
                 delete(slot.row)
             })
-            #endif
             .modifier(TodoDragging(id: Self.dragPrefix + slot.row.id, title: title(of: slot.row), isEnabled: slot.editing == nil))
-            #if os(macOS)
-            .background {
-                if selected == slot.row.id, slot.editing == nil {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(isListFocused ? Color.accentColor.opacity(0.16) : Color.primary.opacity(0.07))
-                        .padding(.horizontal, -8)
-                }
-            }
-            // A click beside its words selects it; beside the fields of one being edited, it stays edited.
-            .onTapGesture { if slot.editing == nil { select(slot.row) } }
-            #endif
-            #if os(iOS)
             .onGeometryChange(for: CGRect?.self) { slot.editing == nil ? nil : $0.frame(in: .named(Self.space)) } action: { frame in
                 if let frame { editingFrame = frame }
             }
-            #else
-            .onGeometryChange(for: CGRect?.self) { slot.editing == nil ? nil : $0.frame(in: .global) } action: { frame in
-                if let frame, slot.editing?.isEnded == false { editingFrame = frame }
-            }
-            #endif
             Divider().padding(.leading, TodoCircle.side + 10)
         }
         .id(slot.id)
@@ -647,7 +734,10 @@ struct TodosView: View {
         }
     }
 
-    private func dropHint(_ kind: TodoSection.Kind) -> String {
+    #endif
+
+    /// What dropping a to-do in a group without any does, while one is dragged.
+    static func dropHint(_ kind: TodoSection.Kind) -> String {
         switch kind {
         case .someday: "Drop here to take the date away"
         case .week: "Drop here for the day after tomorrow"
@@ -656,12 +746,14 @@ struct TodosView: View {
         }
     }
 
+    #if os(iOS)
     private func title(of row: TodoRow) -> String {
         switch row {
         case .todo(let item): item.todo.text.isEmpty ? (item.isLoose ? "To-do" : item.note) : item.todo.text
         case .note(let note): note.name
         }
     }
+    #endif
 
     // MARK: - Ticking
 
@@ -733,30 +825,27 @@ struct TodosView: View {
     }
 
     /// The keys of the row selected; the keys of a to-do being edited are its fields'.
-    private func listKey(_ press: KeyPress, _ proxy: ScrollViewProxy) -> KeyPress.Result {
-        guard editing == nil, let selected else { return .ignored }
+    private func listKey(_ key: TodosKey) -> Bool {
+        guard editing == nil, let selected else { return false }
         let rows = shownSections.flatMap(\.rows)
         guard let index = rows.firstIndex(where: { $0.id == selected }) else {
             self.selected = nil
-            return .ignored
+            return false
         }
-        switch press.key {
-        // Delete comes as U+007F on the Mac.
-        case .delete, .deleteForward, KeyEquivalent("\u{7F}"):
+        switch key {
+        case .delete:
             deleteSelected()
-        case .upArrow, .downArrow:
-            guard let next = rows[safe: index + (press.key == .upArrow ? -1 : 1)] else { return .handled }
-            withAnimation(Theme.quick) { self.selected = next.id }
-            proxy.scrollTo(next.id)
-        case .return:
-            guard case .todo(let item) = rows[index] else { return .ignored }
+        case .up, .down:
+            guard let next = rows[safe: index + (key == .up ? -1 : 1)] else { return true }
+            self.selected = next.id
+            scrollRequest = TodosScrollRequest(next.id)
+        case .enter:
+            guard case .todo(let item) = rows[index] else { return false }
             startEditing(item, at: nil)
         case .escape:
-            withAnimation(Theme.quick) { self.selected = nil }
-        default:
-            return .ignored
+            self.selected = nil
         }
-        return .handled
+        return true
     }
     #endif
 
@@ -780,6 +869,7 @@ struct TodosView: View {
     }
 }
 
+#if os(iOS)
 /// A row of To-dos as the list lays it out: the row being edited keeps who it was when editing began while its line
 /// changes and while it closes, so the keyboard stays in it and its buttons come and go in place.
 private struct TodoSlot: Identifiable {
@@ -854,7 +944,18 @@ private struct TodoDragging: ViewModifier {
     }
 }
 
+#endif
+
 extension Workspace {
+    /// A row's note: a to-do's at its line, a reminded note's.
+    func open(_ row: TodoRow) {
+        switch row {
+        case .todo(let item): openTodo(item.reference)
+        case .note(let note):
+            if let url = note.url { open(url) } else { beep() }
+        }
+    }
+
     /// A row of To-dos to another day (nil: no date), keeping its time and place.
     func move(_ row: TodoRow, to day: Date?) {
         switch row {
@@ -1006,16 +1107,8 @@ struct TodoRowView: View {
     }
     #endif
 
-    private var mark: TaskMark {
-        if case .todo(let item) = row { item.todo.mark } else { .open }
-    }
-
-    private var title: String {
-        switch row {
-        case .todo(let item): item.todo.text.isEmpty ? "Untitled To-do" : item.todo.text
-        case .note(let note): note.name
-        }
-    }
+    private var mark: TaskMark { row.mark }
+    private var title: String { row.title }
 
     /// The words: a click puts the caret where it was, as in Reminders. A reminded note's name opens it.
     private var titleText: some View {
@@ -1103,16 +1196,7 @@ struct TodoRowView: View {
         .foregroundStyle(Color.theme(Theme.textTertiary))
     }
 
-    /// The day and time as the group needs them: only the time today and tomorrow, which the group already says.
-    private var when: String? {
-        guard let date = row.date else { return nil }
-        switch section {
-        case .today, .tomorrow:
-            return row.hasTime ? date.formatted(date: .omitted, time: .shortened) : nil
-        default:
-            return ReminderText.text(date, time: row.hasTime)
-        }
-    }
+    private var when: String? { row.when(in: section) }
 
     @ViewBuilder
     private var picker: some View {
@@ -1146,17 +1230,30 @@ struct TodoRowView: View {
 
     private func open() {
         endEditing()
-        switch row {
-        case .todo(let item): workspace.openTodo(item.reference)
-        case .note(let note):
-            if let url = note.url { workspace.open(url) } else { beep() }
-        }
+        workspace.open(row)
     }
 
-    @MenuContent
     private var menuEntries: [MenuEntry] {
+        TodoRowMenu(workspace: workspace, row: row, isTicked: isTicked, tick: tick, open: open, moveToNote: moveToNote, ask: { ask() },
+                    delete: delete).entries
+    }
+}
+
+/// A to-do's or a reminded note's right-click menu in To-dos.
+struct TodoRowMenu {
+    let workspace: Workspace
+    let row: TodoRow
+    let isTicked: Bool
+    var tick: () -> Void
+    var open: () -> Void
+    var moveToNote: () -> Void
+    var ask: () -> Void
+    var delete: () -> Void
+
+    @MenuContent
+    var entries: [MenuEntry] {
         if case .todo(let item) = row, item.isLoose {
-            MenuEntry("Move to Note…", Self.moveSymbol) { moveToNote() }
+            MenuEntry("Move to Note…", TodoRowView.moveSymbol) { moveToNote() }
         } else {
             MenuEntry("Open Note", "doc.text") { open() }
         }
@@ -1196,6 +1293,30 @@ struct TodoRowView: View {
 extension TodoRow {
     var isNote: Bool { if case .note = self { true } else { false } }
     var isTodo: Bool { !isNote }
+
+    /// What its circle shows: a to-do's mark; a reminded note is to do.
+    var mark: TaskMark {
+        if case .todo(let item) = self { item.todo.mark } else { .open }
+    }
+
+    /// Its words, or a reminded note's name.
+    var title: String {
+        switch self {
+        case .todo(let item): item.todo.text.isEmpty ? "Untitled To-do" : item.todo.text
+        case .note(let note): note.name
+        }
+    }
+
+    /// The day and time as the group needs them: only the time today and tomorrow, which the group already says.
+    func when(in section: TodoSection.Kind) -> String? {
+        guard let date else { return nil }
+        switch section {
+        case .today, .tomorrow:
+            return hasTime ? date.formatted(date: .omitted, time: .shortened) : nil
+        default:
+            return ReminderText.text(date, time: hasTime)
+        }
+    }
 }
 
 /// A line under a to-do as To-dos shows it: a sub-to-do with a circle to tick, a point, a number, or words.
