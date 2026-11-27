@@ -245,26 +245,6 @@ final class FolderTodosTests: XCTestCase {
         XCTAssertEqual(text(yearNote), "- [ ] Service the bike\n")
     }
 
-    #if os(macOS)
-    func testANewTodoGoesIntoTheNoteOpenInItsOwnWindow() async throws {
-        let workspace = try await makeWorkspace()
-        try "- [ ] Service the bike\n".write(to: yearNote, atomically: true, encoding: .utf8)
-        workspace.index.refresh(folders: [year], locations: workspace.locations)
-        try await until { workspace.todos.items.contains { $0.todo.text == "Service the bike" } }
-        workspace.showTodos(in: year)
-        FileWindows.shared.open(yearNote)
-        let controller = try XCTUnwrap(FileWindows.shared.windows.compactMap { $0.windowController as? FileWindowController }.first { FileNode.samePath($0.url, yearNote) })
-        defer { controller.window?.close() }
-        try await until { controller.isLoaded }
-        let added = try XCTUnwrap(workspace.addTodo(due: nil, in: year))
-        XCTAssertEqual(controller.editor.text, "- [ ] Service the bike\n- [ ]\n", "there at once, for what is typed next")
-        XCTAssertEqual(added.todo.line, 1)
-        workspace.dropNewTodo(added.reference)
-        XCTAssertEqual(controller.editor.text, "- [ ] Service the bike\n")
-        await workspace.todosWritten()
-        XCTAssertTrue(FileManager.default.fileExists(atPath: yearNote.path))
-    }
-    #endif
 
     func testANewTodoBeingAddedHasNoNotificationYet() async throws {
         let workspace = try await makeWorkspace()

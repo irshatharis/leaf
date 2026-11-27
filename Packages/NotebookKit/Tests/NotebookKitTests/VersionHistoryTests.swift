@@ -320,44 +320,6 @@ final class VersionHistoryTests: XCTestCase {
         _ = workspace
     }
 
-    func testRevertToFollowsTheWindowThatBecameKey() async throws {
-        _ = try await makeWindow()
-        _ = FileWindows.shared
-        let controller = FileWindowController(url: draft)
-        let window = try XCTUnwrap(controller.window)
-        // The window you work in is AppKit's main window, which a sheet over it leaves as it is.
-        func becameKey(_ window: NSWindow?) {
-            NotificationCenter.default.post(name: NSWindow.didBecomeMainNotification, object: window)
-        }
-        becameKey(window)
-        XCTAssertTrue(Workspace.shared.keyFileNote === controller.noteDocument)
-        // Its sheet up, such as the versions': still the window you are working in.
-        let sheet = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 200, height: 100), styleMask: [.titled], backing: .buffered, defer: false)
-        window.beginSheet(sheet, completionHandler: nil)
-        try await until("the sheet is up") { window.attachedSheet != nil }
-        becameKey(sheet)
-        XCTAssertTrue(Workspace.shared.keyFileNote === controller.noteDocument, "the sheet's window is still the one")
-        // The main window next, the note window's sheet still up: the main window's note.
-        becameKey(self.window)
-        XCTAssertNil(Workspace.shared.keyFileNote)
-        becameKey(window)
-        window.endSheet(sheet)
-        window.close()
-        XCTAssertNil(Workspace.shared.keyFileNote, "closed")
-    }
-
-    func testRevertToFollowsTheNoteWindowYouAreIn() async throws {
-        let (workspace, manager) = try await makeWindow()
-        _ = try await openAndType(workspace, manager, "Typed.")
-        XCTAssertTrue(workspace.canRevertToLastOpened)
-        let elsewhere = NoteDocument(url: papers.appendingPathComponent("Draft.md"), history: nil)
-        workspace.keyFileNote = elsewhere
-        XCTAssertTrue(workspace.revertNote === elsewhere)
-        XCTAssertFalse(workspace.canRevertToLastOpened, "that window's note wasn't changed")
-        workspace.keyFileNote = nil
-        elsewhere.close()
-    }
-
     func testANoteOpenInAWindowOfItsOwnTakesWhatWasTypedToTheTrash() async throws {
         let (workspace, manager) = try await makeWindow()
         // Open in a window of its own, as a note window has it, while the sidebar throws it away.

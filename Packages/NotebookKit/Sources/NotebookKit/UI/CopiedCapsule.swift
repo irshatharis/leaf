@@ -65,9 +65,6 @@ private struct CopiedCapsuleOverlay: ViewModifier {
                         .allowsHitTesting(false)
                         .task {
                             CopiedCapsuleView.announce(copied.name)
-                            #if os(macOS) && DEBUG
-                            CopiedCapsule.lastName = copied.name
-                            #endif
                             try? await Task.sleep(for: CopiedCapsuleView.shownFor)
                             if workspace.copied.file?.id == copied.id { workspace.copied.file = nil }
                         }
@@ -76,65 +73,3 @@ private struct CopiedCapsuleOverlay: ViewModifier {
             .animation(.spring(duration: 0.35, bounce: 0.2), value: workspace.copied.file)
     }
 }
-
-#if os(macOS)
-/// The capsule over a note's own window, which is AppKit's: over the window's content, in a view of its own that
-/// clicks go through.
-@MainActor
-enum CopiedCapsule {
-    private static weak var shown: NSView?
-    #if DEBUG
-    /// What the last capsule said, for the debug remote and tests.
-    static var lastName: String?
-    #endif
-
-    static func show(_ name: String, in window: NSWindow) {
-        CopiedCapsuleView.announce(name)
-        #if DEBUG
-        lastName = name
-        #endif
-        guard let content = window.contentView else { return }
-        shown?.removeFromSuperview()
-        let model = Model()
-        let host = PassThroughHostingView(rootView: Overlay(name: name, model: model))
-        host.sizingOptions = []
-        host.frame = content.bounds
-        host.autoresizingMask = [.width, .height]
-        content.addSubview(host, positioned: .above, relativeTo: nil)
-        shown = host
-        Task { @MainActor [weak host] in
-            // In once it is in the window, out after a moment, then gone.
-            try? await Task.sleep(for: .milliseconds(30))
-            withAnimation(.spring(duration: 0.35, bounce: 0.2)) { model.isShown = true }
-            try? await Task.sleep(for: CopiedCapsuleView.shownFor)
-            withAnimation(.easeOut(duration: 0.25)) { model.isShown = false }
-            try? await Task.sleep(for: .milliseconds(300))
-            host?.removeFromSuperview()
-        }
-    }
-
-    @Observable
-    final class Model {
-        var isShown = false
-    }
-
-    private struct Overlay: View {
-        let name: String
-        let model: Model
-        @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-        var body: some View {
-            VStack {
-                Spacer()
-                CopiedCapsuleView(name: name)
-                    .opacity(model.isShown ? 1 : 0)
-                    .offset(y: model.isShown || reduceMotion ? 0 : 12)
-                    .scaleEffect(model.isShown || reduceMotion ? 1 : 0.94)
-            }
-            .padding(.bottom, 28)
-            .padding(.horizontal, 20)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-}
-#endif

@@ -7,8 +7,7 @@ import UIKit
 /// Earlier versions of the open note (`NoteHistory`): File › Revert To on the Mac, Version History in the note's ⋯ menu
 /// on iPhone and iPad.
 extension Workspace {
-    /// The note Revert To and the versions act on, with its editor: the main window's, or on the Mac a note's own
-    /// window when that is the one you are working in.
+    /// The note Revert To and the versions act on, with its editor.
     struct VersionTarget {
         let note: NoteDocument
         let editor: EditorController
@@ -22,13 +21,6 @@ extension Workspace {
 
     func versionTarget() -> VersionTarget? {
         #if os(macOS)
-        // A sheet over a note's window, the versions', says nothing of its own: the window under it is the one.
-        if let key = NSApp.keyWindow.map({ $0.sheetParent ?? $0 }), let controller = key.windowController as? FileWindowController {
-            guard controller.isLoaded else { return nil }
-            return VersionTarget(note: controller.noteDocument, editor: controller.editor, window: key) { [weak controller] in
-                controller?.window?.isVisible == true
-            }
-        }
         guard let note, note.isLoaded else { return nil }
         return VersionTarget(note: note, editor: editor, window: editor.textView.window) { [weak self, weak note] in
             note != nil && self?.note === note
@@ -39,11 +31,10 @@ extension Workspace {
         #endif
     }
 
-    /// The note Revert To acts on: on the Mac the one in the window you are working in, a note's own or the main
-    /// window's.
+    /// The note Revert To acts on: on the Mac the main window's while you are working in it.
     var revertNote: NoteDocument? {
         #if os(macOS)
-        keyFileNote ?? (isMainWindowInFront ? note : nil)
+        isMainWindowInFront ? note : nil
         #else
         note
         #endif

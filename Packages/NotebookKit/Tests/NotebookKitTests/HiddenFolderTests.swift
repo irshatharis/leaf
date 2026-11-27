@@ -48,7 +48,7 @@ final class HiddenFolderTests: XCTestCase {
         UserDefaults.standard.set(library.path, forKey: "NotebookLibrary")
         let workspace = Workspace()
         workspace.start()
-        workspace.openFolder(drive)
+        workspace.openFromOutside([drive])
         let sidebar = SidebarController(workspace: workspace)
         try await TestRun.wait(while: { workspace.index.isBuilding || workspace.index.entry(for: old) == nil })
         let location = try XCTUnwrap(workspace.location(containing: drive))

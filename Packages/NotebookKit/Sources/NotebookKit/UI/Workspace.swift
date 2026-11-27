@@ -156,9 +156,6 @@ public final class Workspace: NSObject {
     var isMainWindowOpen = true
     /// Commands for the main window given while it was closed (⌘N, ⌘K): they run once it is there again.
     @ObservationIgnored private var waitingForWindow: [() -> Void] = []
-    /// The note in its own window that you are working in, for Revert To; nil while it's the main window.
-    var keyFileNote: NoteDocument?
-    @ObservationIgnored weak var keyFileWindow: FileWindowController?
     /// Another window, such as Settings, is the one you are working in: the File and Edit menus have no note there.
     var isOtherWindowInFront = false
     @ObservationIgnored weak var sidebar: SidebarController?
@@ -328,12 +325,9 @@ public final class Workspace: NSObject {
         #endif
     }
 
-    /// Search knows other notes now: links to them show as links, in this window and in notes open on their own.
+    /// Search knows other notes now: links to them show as links.
     private func refreshLinks() {
         editor.refreshLinks(changed: [])
-        #if os(macOS)
-        FileWindows.shared.refreshLinks(changed: [])
-        #endif
     }
 
     // MARK: - Starting
@@ -716,17 +710,6 @@ public final class Workspace: NSObject {
             if made { DemoLibrary.keepVersions(at: url) }
             addLocation(url)
         }
-    }
-
-    /// A folder from File › Open or the Dock icon: shown where it is in the sidebar, or added as a location of its own
-    /// (iCloud Drive, say) when no location has it yet.
-    public func openFolder(_ url: URL) {
-        start()
-        let url = url.standardizedFileURL
-        if location(containing: url) == nil { addLocation(url) }
-        showWindow?()
-        isSidebarVisible = true
-        open(url)
     }
 
     func root(for location: Location) -> FileNode? { roots[location.id] }
@@ -1319,8 +1302,8 @@ public final class Workspace: NSObject {
 
     /// A note left with no text in it, or only spaces and empty lines, whatever its name, unless Settings keep those.
     /// Not one whose text hasn't come (still in iCloud, or unreadable), which only looks empty; nor one with a reminder
-    /// or a star, kept for something; nor one open in a window of its own as well; nor one kept on its own, from another
-    /// app, whose folder Notebook doesn't have.
+    /// or a star, kept for something; nor one open elsewhere as well; nor one kept on its own, from another app or
+    /// the leaf command, whose folder isn't one of the locations.
     private func isLeftEmpty(_ note: NoteDocument) -> Bool {
         #if os(iOS)
         // Switched for one of the other kind, it goes whatever Settings say.
@@ -2002,7 +1985,7 @@ public final class Workspace: NSObject {
     /// it rewrites are kept in `change`, and when `undoing` it, the links its rename rewrote are put back.
     func renameNow(_ url: URL, to name: String, fileName: Bool = false, updatingLinks: Bool, change: FileChange? = nil, undoing: Bool = false) async -> URL? {
         let isNote = FileKind(url: url, isDirectory: false) == .note
-        let links = updatingLinks && !undoing ? linkSnapshot() : nil
+        let links = updatingLinks && !undoing ? linkSnapshot(moving: url) : nil
         let document = noteMoving(with: url)
         // What notes there are writing is written where they are still, and what was drawn in PDFs there.
         let documents = await NoteDocument.beginMoving(url)
@@ -2265,12 +2248,8 @@ public final class Workspace: NSObject {
     /// `next`: the file to show if the one open goes, as the sidebar asks for the next row; else the last one before it.
     func trash(_ url: URL, next: URL? = nil) -> Task<Bool, Never> {
         guard !isLinkedFolder(url) else { beep(); return Task { false } }
-        #if os(macOS)
-        // Trashed from its own window, which closes: Undo is the main window's, and opens the window again.
-        let closing = keyFileWindow.map { FileNode.isSameOrInside($0.url, url) } == true
-        let change = keepForUndo(FileChange(.trash, "Move to Trash", from: url), in: closing ? mainUndoManager : nil)
-        #else
         let change = keepForUndo(FileChange(.trash, "Move to Trash", from: url))
+        #if os(iOS)
         let open = currentURL.flatMap { FileNode.isSameOrInside($0, url) ? $0 : nil }
         if open != nil { closeThrownAway() }
         beginLeaving(url)
@@ -2308,10 +2287,6 @@ public final class Workspace: NSObject {
     func trashNow(_ url: URL, next: URL? = nil) async -> (done: Bool, place: URL?) {
         let wasCurrent = currentURL.map { FileNode.isSameOrInside($0, url) } ?? false
         if wasCurrent { closeThrownAway() }
-        #if os(macOS)
-        // Their own windows close; what was typed there is saved first.
-        FileWindows.shared.close(atOrInside: url)
-        #endif
         // What was typed in notes there goes along to the Trash, rather than coming back where they were, and what
         // was drawn in PDFs there, a save under way too: Undo of a new handwritten note looks at it as written.
         await NoteDocument.save(atOrInside: url)
@@ -2469,10 +2444,10 @@ public final class Workspace: NSObject {
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
-    /// Opens a file apart from this window, as a double-click in the Finder does: a note in a window of its own, any
-    /// other file in the app the Mac has for it (Preview, QuickTime Player).
+    /// Opens a file in the app the Mac has for it (Preview, QuickTime Player), as a double-click in the Finder does. A
+    /// note is Leaf's own, and opens here.
     func openOnItsOwn(_ url: URL) {
-        guard FileKind(url: url, isDirectory: false) != .note else { return FileWindows.shared.open(url) }
+        guard FileKind(url: url, isDirectory: false) != .note else { return open(url) }
         // Without waiting for the app; when there is none, the system says so and offers to choose one.
         NSWorkspace.shared.open(url, configuration: NSWorkspace.OpenConfiguration())
     }
@@ -2485,8 +2460,7 @@ public final class Workspace: NSObject {
     }
 
     /// Runs a command of the main window in it: brought to the front, or opened again first when it was closed, so what
-    /// the command shows (a new note, search) is there, and its Undo is the window's. A new note made behind a note's
-    /// own window seemed not to come.
+    /// the command shows (a new note, search) is there, and its Undo is the window's.
     func inMainWindow(_ action: @escaping () -> Void) {
         if isMainWindowOpen {
             // The sidebar is in the main window whatever it shows.
@@ -2511,34 +2485,28 @@ public final class Workspace: NSObject {
     }
 
     /// The main window is the one you work in from now, before AppKit says so as it comes to the front: what its
-    /// command does (a new note) is kept for Undo there, not in the note's own window it came from.
+    /// command does (a new note) is kept for Undo there, not in Settings it came from.
     private func workingInMainWindow() {
-        keyFileWindow = nil
-        if keyFileNote != nil { keyFileNote = nil }
         if isOtherWindowInFront { isOtherWindowInFront = false }
         // Then as AppKit has it, in case the main window didn't come to the front after all.
-        DispatchQueue.main.async {
-            if let window = NSApp.mainWindow { FileWindows.becameMain(window) }
+        DispatchQueue.main.async { [weak self] in
+            if let window = NSApp.mainWindow { self?.windowBecameMain(window) }
         }
     }
 
-    /// The main window is the one you are working in: open, with no note's own window or Settings in front of it.
-    var isMainWindowInFront: Bool { keyFileNote == nil && isMainWindowOpen && !isOtherWindowInFront }
+    /// The main window is the one you are working in: open, with no other window such as Settings in front of it.
+    var isMainWindowInFront: Bool { isMainWindowOpen && !isOtherWindowInFront }
 
-    /// A note you can see, for Print and Export: in a note's own window, or the main window's while that is in front.
-    var hasVisibleNote: Bool { keyFileNote != nil || isMainWindowInFront && note != nil }
+    /// A note you can see, for Print and Export.
+    var hasVisibleNote: Bool { isMainWindowInFront && note != nil }
 
     /// The window SwiftUI shows this scene in, the one with the sidebar.
     func isMainWindow(_ window: NSWindow) -> Bool {
         window === sidebar?.outline.window || window.identifier?.rawValue.hasPrefix("main") == true
     }
 
-    /// The note in the window you are working in, also with a sheet over it: a note's own window's, or this window's.
-    /// None with Settings in front or this window closed.
+    /// The note in the main window, also with a sheet over it. None with Settings in front or this window closed.
     func activeEditor() -> (editor: EditorController, title: String, window: NSWindow?)? {
-        if keyFileNote != nil, let controller = keyFileWindow {
-            return (controller.editor, controller.url.deletingPathExtension().lastPathComponent, controller.window)
-        }
         guard isMainWindowInFront, note != nil else { return nil }
         return (editor, currentTitle, editor.textView.window)
     }
@@ -2577,9 +2545,6 @@ public final class Workspace: NSObject {
         } else {
             todoEditing?.commit(now: quitting)
         }
-        #if os(macOS)
-        FileWindows.shared.saveAll(quitting: quitting)
-        #endif
         // Not as the app quits, which wouldn't wait for it: the next launch reads what changed.
         if !quitting { index.keepChanges() }
         defer {
@@ -2649,8 +2614,7 @@ public final class Workspace: NSObject {
     /// Shows an alert where `report` does, and hands over the button chosen.
     func present(_ alert: NSAlert, then answer: ((NSApplication.ModalResponse) -> Void)? = nil) {
         let front = NSApp.orderedWindows.first { $0.isVisible && !($0 is NSPanel) }
-        let fileWindow = front?.windowController is FileWindowController ? front : nil
-        if let window = fileWindow ?? editor.textView.window ?? NSApp.mainWindow ?? front {
+        if let window = editor.textView.window ?? NSApp.mainWindow ?? front {
             alert.beginSheetModal(for: window) { answer?($0) }
         } else {
             answer?(alert.runModal())
@@ -2713,7 +2677,8 @@ public final class Workspace: NSObject {
         readFolders(to: url) { [weak self] in
             guard let self, self.revealing == url else { return }
             #if os(macOS)
-            sidebar?.reveal(url, select: select)
+            // A note outside every location has no row: none is selected while it is open.
+            if select, location(containing: url) == nil { sidebar?.selectNoRow() } else { sidebar?.reveal(url, select: select) }
             #else
             revealRequest = (url, select, UUID())
             #endif
@@ -2810,7 +2775,7 @@ extension Workspace: EditorControllerDelegate {
         case .file(let url):
             if FileManager.default.fileExists(atPath: url.path) { open(url) } else { beep() }
         case .note(let target):
-            if let url = index.resolve(target, from: currentURL) {
+            if let url = resolveLink(target) {
                 open(url)
             } else if let folder = currentURL?.deletingLastPathComponent() ?? folderForNewNote {
                 // A link to a note that doesn't exist yet makes it.
@@ -2825,6 +2790,12 @@ extension Workspace: EditorControllerDelegate {
     public func editor(_ editor: EditorController, quickLook url: URL) {
         quickLook(url)
     }
+
+    #if os(macOS)
+    public func editor(_ editor: EditorController, mayWriteIn folder: URL) -> Bool {
+        FolderAccess.ensure(folder, to: "keep this note's pictures and drawings next to it")
+    }
+    #endif
 
     #if os(iOS)
     public func editor(_ editor: EditorController, mayWriteIn folder: URL) -> Bool {
@@ -2846,7 +2817,12 @@ extension Workspace: EditorControllerDelegate {
             editor.setTitle(current)
             return
         }
-        #if os(iOS)
+        #if os(macOS)
+        guard FolderAccess.ensure(note.url.deletingLastPathComponent(), to: "rename this note") else {
+            editor.setTitle(current)
+            return
+        }
+        #else
         // A note opened from another app came without its folder, which renaming it needs. The name typed stays
         // while Notebook asks for it.
         let folder = note.url.deletingLastPathComponent()
@@ -2877,7 +2853,19 @@ extension Workspace: EditorControllerDelegate {
     }
 
     public func editor(_ editor: EditorController, resolve target: String) -> URL? {
-        index.resolve(target, from: currentURL)
+        resolveLink(target)
+    }
+
+    /// The file a `[[link]]` in the open note goes to: one search knows, or for a note outside every location, which
+    /// search doesn't read the folder of, a note next to it.
+    private func resolveLink(_ target: String) -> URL? {
+        if let found = index.resolve(target, from: currentURL) { return found }
+        guard let currentURL, location(containing: currentURL) == nil else { return nil }
+        let folder = currentURL.deletingLastPathComponent()
+        let name = target.split(separator: "#").first.map(String.init) ?? target
+        return ([name] + NoteSyntax.noteExtensions.sorted().map { name + "." + $0 })
+            .map { folder.appendingPathComponent($0) }
+            .first { FileManager.default.fileExists(atPath: $0.path) && !FileNode.isFolder($0) }
     }
 
     public func editor(_ editor: EditorController, linkTo url: URL) -> FileLink? {

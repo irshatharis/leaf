@@ -46,12 +46,9 @@ extension Workspace {
         return todos + notes
     }
 
-    /// The pills of to-dos in every editor: a time that passed turns red, Tomorrow becomes Today.
+    /// The pills of to-dos in the editor: a time that passed turns red, Tomorrow becomes Today.
     func refreshTodoPills() {
         editor.refreshTodoPills()
-        #if os(macOS)
-        FileWindows.shared.refreshTodoPills()
-        #endif
     }
 
     /// To-dos shows next to the sidebar: no row is selected.
@@ -358,24 +355,10 @@ extension Workspace {
         todoRewrites[Self.rewriteKey(todo)] = changed
     }
 
-    /// Whether what is asked for comes from To-dos: it shows in this window, and on the Mac no other window is in front.
-    private var isInTodos: Bool {
-        #if os(macOS)
-        showsTodos && (NSApp.keyWindow == nil || NSApp.keyWindow === sidebar?.outline.window)
-        #else
-        showsTodos
-        #endif
-    }
-
-    /// The editor that shows a note with its text in: this window's, or on the Mac a window of its own.
+    /// The editor, when it shows this note with its text in.
     func editorShowing(_ url: URL) -> EditorController? {
-        let target = url.standardizedFileURL
-        if let note, note.isLoaded, FileNode.samePath(note.url, target) { return editor }
-        #if os(macOS)
-        return FileWindows.shared.editor(showing: target)
-        #else
-        return nil
-        #endif
+        guard let note, note.isLoaded, FileNode.samePath(note.url, url.standardizedFileURL) else { return nil }
+        return editor
     }
 
     typealias TodoEdit = @Sendable (NSString, MarkdownLine) -> (range: NSRange, replacement: String)?
@@ -450,9 +433,6 @@ extension Workspace {
             }
             if rewrites { rewrote(todo, to: changed) }
             todos.patch(shown.todo, to: shown.source, under: shown.under)
-            // A note open in a window of its own on the Mac keeps the edit's Undo there: the window this was asked
-            // from undoes it too, as one step.
-            if undoable, editor !== self.editor, isInTodos { keepTodoChangeForUndo(actionName) { undo(changed) } }
             // From a notification the app may only have a moment: the note is written now, not after a pause.
             saveNote(showing: todo.url)
             outcome?(.written)
@@ -590,8 +570,8 @@ extension Workspace {
                 return nil
             }
             saveNote(showing: todo.url)
-            // Redo deletes it again. The editor keeps its edit with its own Undo (on iPhone and iPad, or a note in a
-            // window of its own), not the one this Undo came from, unless they are one (the main window's note).
+            // Redo deletes it again. The editor keeps its edit with its own Undo on iPhone and iPad, not the one this
+            // Undo came from, unless they are one (the Mac's).
             if editor.textView.undoManager !== fileUndoManager {
                 keepTodoChangeForUndo("Delete To-do") { [weak self] in self?.deleteTodo(todo) }
             }
@@ -604,14 +584,9 @@ extension Workspace {
 
     /// Writes the note an editor shows, now.
     func saveNote(showing url: URL) {
-        if let note, note.isLoaded, FileNode.samePath(note.url, url) {
-            note.update(text: editor.text)
-            note.saveNow()
-            return
-        }
-        #if os(macOS)
-        FileWindows.shared.save(showing: url)
-        #endif
+        guard let note, note.isLoaded, FileNode.samePath(note.url, url) else { return }
+        note.update(text: editor.text)
+        note.saveNow()
     }
 
     /// Waits until the locations have been looked up, and so can be read and written: a notification's action can be
