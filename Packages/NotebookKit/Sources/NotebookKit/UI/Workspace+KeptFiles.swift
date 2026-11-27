@@ -106,6 +106,15 @@ extension Workspace {
         saveKeptFiles()
     }
 
+    #if os(macOS)
+    /// On the Mac a file is kept on its own only to be among the recent files: one that drops off them is let go.
+    func keepOnlyRecentFiles() {
+        guard keptFiles.contains(where: { !recents.contains($0.path) }) else { return }
+        keptFiles.removeAll { !recents.contains($0.path) }
+        saveKeptFiles()
+    }
+    #endif
+
     private func saveKeptFiles() {
         if !temporaryLocations { KeptFileStore.save(keptFiles) }
     }

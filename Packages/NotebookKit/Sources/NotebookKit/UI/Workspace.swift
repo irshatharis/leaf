@@ -1013,7 +1013,10 @@ public final class Workspace: NSObject {
         }
         recents.removeAll { $0 == target.path }
         recents.insert(target.path, at: 0)
-        recents = Array(recents.prefix(8))
+        recents = Array(recents.prefix(Self.recentsKept))
+        #if os(macOS)
+        keepOnlyRecentFiles()
+        #endif
         if !temporaryLocations {
             UserDefaults.standard.set(recents, forKey: "recents")
             UserDefaults.standard.set(target.path, forKey: "lastOpened")
@@ -1609,6 +1612,8 @@ public final class Workspace: NSObject {
     }
 
     // MARK: - Recents
+
+    static let recentsKept = 20
 
     /// The files opened last, newest first, without the one that is open: for File › Open Recent and search.
     var recentURLs: [URL] { recentURLs(includingOpen: false) }
