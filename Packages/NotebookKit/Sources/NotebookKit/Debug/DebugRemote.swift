@@ -190,6 +190,31 @@ enum DebugRemote {
             for character in argument.replacingOccurrences(of: "\\n", with: "\n") {
                 if character == "\n" { sendKey("\r", code: 36) } else { sendKey(String(character), code: 0) }
             }
+        case "layers":
+            // layers [min points²]: the window's layers at least that big, with the view each draws for.
+            let least = numbers.first ?? 40_000
+            func walk(_ layer: CALayer, _ depth: Int) {
+                let size = layer.bounds.size
+                if size.width * size.height >= least {
+                    let owner = layer.delegate.map { String(describing: type(of: $0)) } ?? "-"
+                    let contents = layer.contents.map { String(describing: type(of: $0)) } ?? "none"
+                    log("layer \(String(repeating: " ", count: depth))\(type(of: layer)) \(Int(size.width))x\(Int(size.height)) for \(owner) contents \(contents) drawsAsync \(layer.drawsAsynchronously)")
+                }
+                for sublayer in layer.sublayers ?? [] { walk(sublayer, depth + 1) }
+            }
+            if let root = window?.contentView?.superview?.layer { walk(root, 0) }
+        case "textview":
+            // textview <key> <number>: sets a property of the note's text view by key-value coding.
+            let bits = argument.split(separator: " ").map(String.init)
+            if let editor, bits.count == 2, let value = Int(bits[1]) {
+                editor.textView.setValue(NSNumber(value: value), forKey: bits[0])
+                log("textview \(bits[0]) = \(editor.textView.value(forKey: bits[0]) ?? "nil")")
+            }
+        case "typebench":
+            if let window {
+                TypeBench.run(count: Int(numbers.first ?? 200), interval: numbers.count > 1 ? numbers[1] : 0.1, window: window,
+                              send: { sendKey($0, code: 0); endEvent() }, log: log)
+            }
         case "key":
             key(argument)
         case "click", "doubleclick", "rightclick":

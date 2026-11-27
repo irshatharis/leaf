@@ -78,6 +78,13 @@ final class NotebookLayoutManager: NSLayoutManager, @preconcurrency NSLayoutMana
         return mode == HiddenMode.always.rawValue || !(source?.isRevealed(index) ?? false)
     }
 
+    #if DEBUG
+    /// For the typing benchmark: how much text was given glyphs and laid out, which the load on the machine doesn't
+    /// change as it does times.
+    nonisolated(unsafe) static var debugGlyphsMade = 0
+    nonisolated(unsafe) static var debugLinesLaidOut = 0
+    #endif
+
     // MARK: - Glyphs
 
     func layoutManager(
@@ -90,6 +97,9 @@ final class NotebookLayoutManager: NSLayoutManager, @preconcurrency NSLayoutMana
     ) -> Int {
         guard let storage = textStorage else { return 0 }
         let count = glyphRange.length
+        #if DEBUG
+        Self.debugGlyphsMade += count
+        #endif
         let length = storage.length
         var changed: [NSLayoutManager.GlyphProperty]?
         // The two attributes are read a run at a time: reading all of a character's attributes, a dictionary to bridge
@@ -141,6 +151,9 @@ final class NotebookLayoutManager: NSLayoutManager, @preconcurrency NSLayoutMana
         in textContainer: NSTextContainer,
         forGlyphRange glyphRange: NSRange
     ) -> Bool {
+        #if DEBUG
+        Self.debugLinesLaidOut += 1
+        #endif
         guard let (index, object) = blockObject(inGlyphRange: glyphRange) else { return false }
         let style = textStorage?.attribute(.paragraphStyle, at: index, effectiveRange: nil) as? NSParagraphStyle
         let before = style?.paragraphSpacingBefore ?? 0
